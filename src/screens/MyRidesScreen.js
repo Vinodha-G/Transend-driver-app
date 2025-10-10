@@ -100,6 +100,27 @@ const MyRidesScreen = ({ navigation }) => {
   ];
 
   /**
+   * Map API Status to Tab Status
+   * 
+   * Maps the status values from API to the tab filter values.
+   * This handles any discrepancy between API status names and UI tab names.
+   */
+  const mapApiStatusToTabStatus = (apiStatus) => {
+    const statusMap = {
+      'new': 'new',
+      'accepted': 'accepted',
+      'picked_up': 'pickedup',
+      'pickedup': 'pickedup',
+      'delivered': 'delivered',
+      'completed': 'delivered',
+      'cancelled': 'cancelled',
+      'canceled': 'cancelled',
+      'cancel': 'cancelled',
+    };
+    return statusMap[apiStatus?.toLowerCase()] || apiStatus;
+  };
+
+  /**
    * Get Filtered Jobs
    * 
    * Filters the jobs array based on the currently active tab.
@@ -108,7 +129,10 @@ const MyRidesScreen = ({ navigation }) => {
    * @returns {Array} Array of jobs matching the active tab status
    */
   const getFilteredJobs = () => {
-    return jobs.filter(job => job.status === activeTab);
+    return jobs.filter(job => {
+      const mappedStatus = mapApiStatusToTabStatus(job.status);
+      return mappedStatus === activeTab;
+    });
   };
 
   /**
@@ -179,7 +203,7 @@ const MyRidesScreen = ({ navigation }) => {
         <FlatList
           data={getFilteredJobs()}                        // Use filtered jobs based on active tab
           renderItem={renderJobItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || Math.random()).toString()}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={                            // Show when no jobs match the filter
             <View style={styles.emptyContainer}>

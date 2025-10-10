@@ -135,7 +135,7 @@ const NotificationScreen = () => {
         <FlatList
           data={notifications}                           // Use notifications from context
           renderItem={renderNotificationItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || Math.random()).toString()}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           ListEmptyComponent={                           // Show when no notifications exist

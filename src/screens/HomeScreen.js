@@ -1,15 +1,18 @@
 /**
- * HomeScreen.js - Main Dashboard Screen
+ * HomeScreen.js - Main Dashboard Screen with API Integration
  * 
  * The primary dashboard screen that drivers see when they open the app.
  * Displays key statistics, available jobs, and provides quick access to main features.
+ * Now integrated with real API data and loading states.
  * 
  * Features:
  * - Job statistics overview (new orders, accepted, picked up, delivered)
- * - List of new available jobs
+ * - List of new available jobs from API
  * - Navigation to detailed screens
- * - Real-time data from app context
+ * - Real-time data from app context with API integration
  * - Responsive grid layout for statistics
+ * - Loading states and error handling
+ * - Pull-to-refresh functionality
  * 
  * Navigation:
  * - Accessed via bottom tab navigation (Home tab)
@@ -17,16 +20,17 @@
  * 
  * Data Sources:
  * - Global app context for user data and job statistics
- * - Real-time job status updates
- * - Notification count for header badge
+ * - Real-time dashboard data from API
+ * - Job counts from API dashboard endpoint
  * 
  * @author Driver App Team
  * @version 1.0.0
  */
 
-import React from 'react';
-import { View, Text, ScrollView, FlatList, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
 import StatsCard from '../components/common/StatsCard';
 import JobCard from '../components/common/JobCard';
@@ -38,43 +42,70 @@ import { colors, commonStyles } from '../styles/commonStyles';
  * 
  * Main dashboard screen providing overview of driver's current status,
  * job statistics, and available work opportunities.
+ * Now includes API integration with loading states and error handling.
  * 
  * @param {Object} props - Component props
  * @param {Object} props.navigation - React Navigation object for screen navigation
  * @returns {JSX.Element} HomeScreen component
  */
 const HomeScreen = ({ navigation }) => {
-  // Get app data from global context
-  const { jobs, jobStats, unreadNotifications } = useApp();
+  // Get app data and functions from global context
+  const {
+    jobs,
+    jobStats,
+    unreadNotifications,
+    dashboardData,
+    loading,
+    errors,
+    loadDashboardData,
+    refreshAllData,
+    isLoading,
+    getError
+  } = useApp();
+
+  /**
+   * Screen Focus Effect
+   * 
+   * Refreshes dashboard data when screen comes into focus.
+   * Ensures user always sees the latest statistics and jobs.
+   */
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadDashboardData();
+    });
+
+    return unsubscribe;
+  }, [navigation, loadDashboardData]);
 
   /**
    * Statistics Data Configuration
    * 
    * Creates an array of statistics cards to display job counts by status.
-   * Uses real-time data from app context for accurate counts.
+   * Uses real-time data from API dashboard for accurate counts.
+   * Includes safe defaults to prevent errors during loading.
    */
   const statsData = [
     { 
       id: 1, 
-      count: jobStats.newOrders.toString(),        // Convert number to string for display
+      count: (jobStats.newOrders || 0).toString(),        // API count for new orders with fallback
       title: 'New Order', 
       iconName: 'car'                              // Ionicons name for car icon
     },
     { 
       id: 2, 
-      count: jobStats.accepted.toString(), 
+      count: (jobStats.accepted || 0).toString(),         // API count for accepted jobs with fallback
       title: 'Accepted', 
       iconName: 'checkmark-circle'                 // Checkmark icon for accepted jobs
     },
     { 
       id: 3, 
-      count: jobStats.pickedup.toString(), 
+      count: (jobStats.pickedup || 0).toString(),         // API count for picked up jobs with fallback
       title: 'Pickedup', 
       iconName: 'arrow-up-circle'                  // Up arrow for picked up status
     },
     { 
       id: 4, 
-      count: jobStats.delivered.toString(), 
+      count: (jobStats.delivered || 0).toString(),        // API count for delivered jobs with fallback
       title: 'Delivered', 
       iconName: 'checkmark-done-circle'            // Double checkmark for completed jobs
     },
@@ -83,8 +114,8 @@ const HomeScreen = ({ navigation }) => {
   /**
    * Filter New Jobs
    * 
-   * Extracts only jobs with 'new' status to display in the available jobs section.
-   * This ensures drivers only see jobs they haven't accepted yet.
+   * Gets new jobs from the processed jobs array with proper field mapping.
+   * Uses the jobs that have been properly mapped from API data.
    */
   const newJobs = jobs.filter(job => job.status === 'new');
 
@@ -97,6 +128,16 @@ const HomeScreen = ({ navigation }) => {
   const handleMenuPress = () => {
     // Handle drawer/menu opening
     console.log('Menu pressed');
+  };
+
+  /**
+   * Handle Pull to Refresh
+   * 
+   * Refreshes all data when user pulls down on the screen.
+   * Provides up-to-date job statistics and new jobs.
+   */
+  const handleRefresh = async () => {
+    await refreshAllData();
   };
 
   /**
@@ -177,14 +218,24 @@ const HomeScreen = ({ navigation }) => {
         showNotificationBadge={unreadNotifications > 0}  // Show badge if unread notifications exist
       />
       
-      {/* Main content area with scrollable sections */}
-      <ScrollView style={styles.scrollView}>
+      {/* Main content area with scrollable sections and pull-to-refresh */}
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading('dashboard')}
+            onRefresh={handleRefresh}
+            colors={[colors.themeColor]}
+            tintColor={colors.themeColor}
+          />
+        }
+      >
         {/* Statistics Section - Job counts in 2x2 grid */}
         <View style={[commonStyles.customContainer, styles.statsSection]}>
           <FlatList
             data={statsData}
             renderItem={renderStatsItem}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => (item.id || Math.random()).toString()}
             horizontal={false}                           // Vertical scrolling
             numColumns={2}                               // 2 columns for grid layout
             scrollEnabled={false}                        // Disable scroll (parent ScrollView handles it)
@@ -199,7 +250,7 @@ const HomeScreen = ({ navigation }) => {
           <FlatList
             data={newJobs}
             renderItem={renderJobItem}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => (item.id || Math.random()).toString()}
             scrollEnabled={false}                        // Disable scroll (parent ScrollView handles it)
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={                         // Show when no jobs available

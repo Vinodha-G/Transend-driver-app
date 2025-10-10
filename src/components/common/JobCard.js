@@ -61,7 +61,11 @@ const JobCard = ({ job, onPress }) => {
       <View style={styles.myRideHead}>
         {/* Company Profile Image */}
         <Image 
-          source={{ uri: job.profileImage }} 
+          source={
+            job.profileImage && job.profileImage.trim() !== '' 
+              ? { uri: job.profileImage }
+              : require('../../../assets/images/profile/p1.png')
+          } 
           style={[commonStyles.profileImg, styles.profileImg]} 
         />
         

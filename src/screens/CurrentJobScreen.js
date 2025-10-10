@@ -1,9 +1,10 @@
 /**
- * CurrentJobScreen.js - Active Job Dashboard
+ * CurrentJobScreen.js - Active Job Dashboard with API Integration
  * 
  * Displays the driver's currently active job with status tracking and action controls.
  * Provides a comprehensive view of job details, customer information, locations, and
  * job management actions. Handles empty state when no active jobs are available.
+ * Now integrated with real API services for data fetching and job status updates.
  * 
  * Features:
  * - Current job status display with visual indicators
@@ -12,6 +13,9 @@
  * - Job action buttons for workflow management
  * - Navigation integration for map view and details
  * - Empty state handling with motivational messaging
+ * - Loading states and error handling
+ * - Real-time job status updates via API
+ * - Pull-to-refresh functionality
  * 
  * Job Status Flow:
  * - accepted: Job accepted, ready to start
@@ -24,16 +28,16 @@
  * - Links to Notification screen via header
  * 
  * Data Sources:
- * - Global app context for jobs and notifications
- * - Real-time job status tracking
- * - Customer profile information
+ * - Global app context with API integration
+ * - Real-time dashboard data from API
+ * - Job status tracking with server sync
  * 
  * @author Driver App Team
  * @version 1.0.0
  */
 
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
@@ -45,14 +49,44 @@ import { colors, commonStyles } from '../styles/commonStyles';
  * 
  * Main dashboard for displaying and managing the driver's currently active job.
  * Shows job details, status, and provides action controls for job workflow.
+ * Now includes API integration, loading states, and error handling.
  * 
  * @param {Object} props - Component props
  * @param {Object} props.navigation - React Navigation object for screen navigation
  * @returns {JSX.Element} CurrentJobScreen component
  */
 const CurrentJobScreen = ({ navigation }) => {
-  // Get jobs and notification data from global context
-  const { jobs, unreadNotifications } = useApp();
+  // Get data and functions from global context
+  const {
+    jobs,
+    unreadNotifications,
+    dashboardData,
+    loading,
+    errors,
+    loadDashboardData,
+    updateJobStatus,
+    refreshAllData,
+    isLoading,
+    getError,
+    clearError
+  } = useApp();
+
+  // Local loading state for job actions
+  const [actionLoading, setActionLoading] = useState(false);
+
+  /**
+   * Screen Focus Effect
+   * 
+   * Refreshes dashboard data when screen comes into focus.
+   * Ensures user always sees the latest job information.
+   */
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadDashboardData();
+    });
+
+    return unsubscribe;
+  }, [navigation, loadDashboardData]);
 
   /**
    * Current Job Selection
@@ -60,8 +94,12 @@ const CurrentJobScreen = ({ navigation }) => {
    * Finds the active job from the jobs array. Priority order:
    * 1. Jobs with 'accepted' status (newly accepted)
    * 2. Jobs with 'pickedup' status (in progress)
+   * 
+   * For API integration, we also check dashboardData.new_jobs
    */
-  const currentJob = jobs.find(job => job.status === 'accepted') || jobs.find(job => job.status === 'pickedup');
+  const currentJob = jobs.find(job => job.status === 'accepted') || 
+                    jobs.find(job => job.status === 'pickedup') ||
+                    (dashboardData.new_jobs && dashboardData.new_jobs.length > 0 ? dashboardData.new_jobs[0] : null);
 
   /**
    * Handle Menu Press
@@ -83,16 +121,66 @@ const CurrentJobScreen = ({ navigation }) => {
   };
 
   /**
-   * Handle Job Action
+   * Handle Job Action with API Integration
    * 
-   * Handles job workflow actions like start pickup, confirm pickup, start delivery, etc.
-   * Currently logs action - can be extended to update job status in context.
+   * Handles job workflow actions with real API calls and loading states.
+   * Updates job status via API and provides user feedback.
    * 
    * @param {string} action - The job action to perform (start, pickup, deliver, etc.)
    */
-  const handleJobAction = (action) => {
-    console.log(`Job action: ${action}`);
-    // Handle job actions like start, complete, etc.
+  const handleJobAction = async (action) => {
+    if (!currentJob) return;
+
+    setActionLoading(true);
+    
+    try {
+      let success = false;
+      let newStatus = '';
+      
+      switch (action) {
+        case 'start':
+          // Start job - mark as picked up
+          newStatus = 'pickedup';
+          success = await updateJobStatus(currentJob.id, newStatus);
+          break;
+          
+        case 'complete':
+          // Complete job - mark as delivered
+          newStatus = 'delivered';
+          success = await updateJobStatus(currentJob.id, newStatus);
+          break;
+          
+        default:
+          console.warn('Unknown job action:', action);
+          break;
+      }
+      
+      if (success) {
+        Alert.alert(
+          'Success',
+          `Job ${action === 'start' ? 'started' : 'completed'} successfully!`,
+          [{ text: 'OK' }]
+        );
+        
+        // Refresh dashboard data to get latest job counts
+        await loadDashboardData();
+      } else {
+        Alert.alert(
+          'Error',
+          `Failed to ${action} job. Please try again.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Job action error:', error);
+      Alert.alert(
+        'Error',
+        `An error occurred while trying to ${action} the job.`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   /**
@@ -106,6 +194,63 @@ const CurrentJobScreen = ({ navigation }) => {
       navigation.navigate('JobDetails', { job: currentJob });
     }
   };
+
+  /**
+   * Handle Pull to Refresh
+   * 
+   * Refreshes all data when user pulls down on the screen.
+   */
+  const handleRefresh = async () => {
+    await refreshAllData();
+  };
+
+  /**
+   * Show Error Alert
+   * 
+   * Displays error messages with retry option.
+   */
+  const showErrorAlert = (operation) => {
+    const error = getError(operation);
+    if (error) {
+      Alert.alert(
+        'Error',
+        error,
+        [
+          { text: 'Cancel', onPress: () => clearError(operation) },
+          { text: 'Retry', onPress: () => loadDashboardData() }
+        ]
+      );
+    }
+  };
+
+  // Show error alert for dashboard errors
+  useEffect(() => {
+    if (getError('dashboard')) {
+      showErrorAlert('dashboard');
+    }
+  }, [getError('dashboard')]);
+
+  /**
+   * Loading State Render
+   * 
+   * Shows loading indicator while fetching dashboard data.
+   */
+  if (isLoading('dashboard') && !currentJob) {
+    return (
+      <SafeAreaView style={commonStyles.container}>
+        <Header
+          onMenuPress={handleMenuPress}
+          onNotificationPress={handleNotificationPress}
+          showNotificationBadge={unreadNotifications > 0}
+        />
+        
+        <View style={styles.loadingContainer}>
+          <Ionicons name="refresh" size={40} color={colors.themeColor} />
+          <Text style={styles.loadingText}>Loading job data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   /**
    * Empty State Render
@@ -150,17 +295,27 @@ const CurrentJobScreen = ({ navigation }) => {
         showNotificationBadge={unreadNotifications > 0}
       />
       
-      {/* Scrollable job content */}
-      <ScrollView style={styles.scrollView}>
+      {/* Scrollable job content with pull-to-refresh */}
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading('dashboard')}
+            onRefresh={handleRefresh}
+            colors={[colors.themeColor]}
+            tintColor={colors.themeColor}
+          />
+        }
+      >
         <View style={[commonStyles.customContainer, styles.container]}>
           
           {/* Current Job Status Section */}
           <View style={styles.statusContainer}>
             <Text style={styles.statusTitle}>Current Job Status</Text>
             {/* Dynamic status badge with color coding */}
-            <View style={[styles.statusBadge, styles[`${currentJob.status}Status`]]}>
+            <View style={[styles.statusBadge, styles[`${currentJob.status || 'new'}Status`]]}>
               <Text style={styles.statusText}>
-                {currentJob.status.toUpperCase()}
+                {(currentJob.status || 'new').toUpperCase()}
               </Text>
             </View>
           </View>
@@ -170,7 +325,11 @@ const CurrentJobScreen = ({ navigation }) => {
             {/* Job Header with company info */}
             <View style={styles.jobHeader}>
               <Image
-                source={{ uri: currentJob.profileImage }}
+                source={
+                  currentJob.profileImage && currentJob.profileImage.trim() !== '' 
+                    ? { uri: currentJob.profileImage }
+                    : require('../../assets/images/profile/p1.png')
+                }
                 style={styles.companyImage}
               />
               <View style={styles.jobInfo}>
@@ -205,22 +364,44 @@ const CurrentJobScreen = ({ navigation }) => {
             {/* Actions for accepted jobs (ready to start) */}
             {currentJob.status === 'accepted' && (
               <TouchableOpacity
-                style={[styles.actionButton, styles.startButton]}
+                style={[
+                  styles.actionButton, 
+                  styles.startButton,
+                  actionLoading && styles.disabledButton
+                ]}
                 onPress={() => handleJobAction('start')}
+                disabled={actionLoading}
               >
-                <Ionicons name="play" size={20} color={colors.white} />
-                <Text style={styles.actionButtonText}>Start Job</Text>
+                {actionLoading ? (
+                  <Ionicons name="hourglass" size={20} color={colors.white} />
+                ) : (
+                  <Ionicons name="play" size={20} color={colors.white} />
+                )}
+                <Text style={styles.actionButtonText}>
+                  {actionLoading ? 'Starting...' : 'Start Job'}
+                </Text>
               </TouchableOpacity>
             )}
 
             {/* Actions for picked up jobs (in transit) */}
             {currentJob.status === 'pickedup' && (
               <TouchableOpacity
-                style={[styles.actionButton, styles.completeButton]}
+                style={[
+                  styles.actionButton, 
+                  styles.completeButton,
+                  actionLoading && styles.disabledButton
+                ]}
                 onPress={() => handleJobAction('complete')}
+                disabled={actionLoading}
               >
-                <Ionicons name="checkmark" size={20} color={colors.white} />
-                <Text style={styles.actionButtonText}>Complete Job</Text>
+                {actionLoading ? (
+                  <Ionicons name="hourglass" size={20} color={colors.white} />
+                ) : (
+                  <Ionicons name="checkmark" size={20} color={colors.white} />
+                )}
+                <Text style={styles.actionButtonText}>
+                  {actionLoading ? 'Completing...' : 'Complete Job'}
+                </Text>
               </TouchableOpacity>
             )}
 
@@ -228,6 +409,7 @@ const CurrentJobScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[styles.actionButton, styles.detailsButton]}
               onPress={handleViewDetails}
+              disabled={actionLoading}
             >
               <Ionicons name="map" size={20} color={colors.themeColor} />
               <Text style={[styles.actionButtonText, styles.detailsButtonText]}>
@@ -250,6 +432,7 @@ const CurrentJobScreen = ({ navigation }) => {
  * - Job card layout with company information
  * - Location display with icon integration
  * - Action button styling for job workflow
+ * - Loading states and disabled button styles
  */
 const styles = StyleSheet.create({
   // Main scroll container
@@ -260,6 +443,22 @@ const styles = StyleSheet.create({
   // Main content container
   container: {
     paddingTop: 16,                             // Top spacing from header
+  },
+
+  // Loading state container
+  loadingContainer: {
+    flex: 1,                                    // Fill available space
+    justifyContent: 'center',                   // Center content vertically
+    alignItems: 'center',                       // Center content horizontally
+    paddingHorizontal: 32,                      // Side padding
+  },
+
+  // Loading text styling
+  loadingText: {
+    fontSize: 16,                               // Readable text size
+    color: colors.contentColor,                 // Subdued text color
+    marginTop: 12,                              // Space after icon
+    textAlign: 'center',                        // Center align text
   },
   
   // Empty state styling
@@ -444,6 +643,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,              // White background
     borderWidth: 1,                             // Outline border
     borderColor: colors.themeColor,             // Theme color border
+  },
+
+  // Disabled button state
+  disabledButton: {
+    opacity: 0.6,                               // Reduced opacity for disabled state
   },
   
   // Action button text

@@ -31,6 +31,9 @@ import NotificationScreen from '../screens/NotificationScreen';
 import ProfileSettingScreen from '../screens/ProfileSettingScreen';
 import CurrentJobScreen from '../screens/CurrentJobScreen';
 import JobDetailsScreen from '../screens/JobDetailsScreen';
+import DocumentsScreen from '../screens/DocumentsScreen';
+import VehicleScreen from '../screens/VehicleScreen';
+import BankDetailsScreen from '../screens/BankDetailsScreen';
 
 // Import styling constants
 import { colors } from '../styles/commonStyles';
@@ -196,6 +199,54 @@ export default function AppNavigator() {
           component={JobDetailsScreen}
           options={{
             title: 'Job Details',
+            headerStyle: {
+              backgroundColor: colors.white,
+            },
+            headerTintColor: colors.titleColor,
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        />
+        
+        {/* Documents screen for driver document management */}
+        <Stack.Screen 
+          name="Documents" 
+          component={DocumentsScreen}
+          options={{
+            title: 'Documents',
+            headerStyle: {
+              backgroundColor: colors.white,
+            },
+            headerTintColor: colors.titleColor,
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        />
+        
+        {/* Vehicle screen for driver vehicle information */}
+        <Stack.Screen 
+          name="Vehicle" 
+          component={VehicleScreen}
+          options={{
+            title: 'Vehicle Details',
+            headerStyle: {
+              backgroundColor: colors.white,
+            },
+            headerTintColor: colors.titleColor,
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        />
+        
+        {/* Bank details screen for payment information */}
+        <Stack.Screen 
+          name="BankDetails" 
+          component={BankDetailsScreen}
+          options={{
+            title: 'Bank Details',
             headerStyle: {
               backgroundColor: colors.white,
             },

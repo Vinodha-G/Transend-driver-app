@@ -69,7 +69,7 @@ const JobDetailsScreen = ({ route }) => {
   const { job } = route.params;
   
   // Get job update function from global context
-  const { updateJobStatus } = useApp();
+  const { updateJobStatus, acceptJob } = useApp();
   
   /**
    * Location State Management
@@ -132,7 +132,7 @@ const JobDetailsScreen = ({ route }) => {
    * Updates job status to 'accepted' and provides user feedback.
    * Only available for jobs with 'available' status.
    */
-  const handleAcceptJob = () => {
+  const handleAcceptJob = async () => {
     Alert.alert(
       'Accept Job',
       'Are you sure you want to accept this job?',
@@ -140,9 +140,18 @@ const JobDetailsScreen = ({ route }) => {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Accept', 
-          onPress: () => {
-            updateJobStatus(job.id, 'accepted');
-            Alert.alert('Success', 'Job accepted successfully!');
+          onPress: async () => {
+            try {
+              const success = await acceptJob(job.id);
+              if (success) {
+                Alert.alert('Success', 'Job accepted successfully!');
+              } else {
+                Alert.alert('Error', 'Failed to accept job. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error accepting job:', error);
+              Alert.alert('Error', 'Failed to accept job. Please try again.');
+            }
           }
         }
       ]
