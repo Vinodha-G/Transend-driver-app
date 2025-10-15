@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Driver App - React Native Mobile Application
 
 > A comprehensive transportation/logistics driver mobile app built with React Native and Expo, converted from HTML/CSS/JavaScript web application with 100% feature parity.
@@ -492,3 +493,6 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 - **Compatibility**: iOS and Android support
 
 **🎯 PRODUCTION READY**: The app is fully functional and ready for real-world deployment!
+=======
+# Transend-driver-app
+>>>>>>> 96436c1cf8c963ba52616abadf3790d6ea2fd56e
