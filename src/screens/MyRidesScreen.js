@@ -97,6 +97,7 @@ const MyRidesScreen = ({ navigation, route }) => {
    * Handle Menu Navigation
    * 
    * Handles navigation when a menu item is selected.
+   * Always navigate to the selected route.
    * 
    * @param {string} route - The route to navigate to
    */
