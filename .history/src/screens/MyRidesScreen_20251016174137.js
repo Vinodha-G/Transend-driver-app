@@ -27,10 +27,10 @@
  * - Real-time filtering based on job status
  * 
  * @author Driver App Team
- * @version 1.1.0
+ * @version 1.0.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../components/common/Header';
@@ -46,28 +46,15 @@ import { colors, commonStyles } from '../styles/commonStyles';
  * 
  * @param {Object} props - Component props
  * @param {Object} props.navigation - React Navigation object for screen navigation
- * @param {Object} props.route - React Navigation route object for params
  * @returns {JSX.Element} MyRidesScreen component
  */
 const MyRidesScreen = ({ navigation, route }) => {
   // Get jobs data and notification count from global context
   const { jobs, unreadNotifications } = useApp();
-
+  
   // Local state for active tab selection
-  const [activeTab, setActiveTab] = useState('accepted');
-
-  /**
-   * Update activeTab when initialTab param is passed from HomeScreen
-   * This ensures the correct tab opens even if the screen is already mounted
-   */
-  useEffect(() => {
-    if (route.params?.initialTab) {
-      setActiveTab(route.params.initialTab);
-
-      // Clear the param to prevent repeated updates on re-render
-      navigation.setParams({ initialTab: undefined });
-    }
-  }, [route.params?.initialTab]);
+ const initialTab = route.params?.initialTab || 'accepted';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   /**
    * Handle Menu Press
@@ -143,7 +130,10 @@ const MyRidesScreen = ({ navigation, route }) => {
    * @returns {Array} Array of jobs matching the active tab status
    */
   const getFilteredJobs = () => {
-    return jobs.filter(job => mapApiStatusToTabStatus(job.status) === activeTab);
+    return jobs.filter(job => {
+      const mappedStatus = mapApiStatusToTabStatus(job.status);
+      return mappedStatus === activeTab;
+    });
   };
 
   /**
@@ -162,7 +152,7 @@ const MyRidesScreen = ({ navigation, route }) => {
         activeTab === tab.id && styles.activeTabButton  // Apply active styling conditionally
       ]}
       onPress={() => setActiveTab(tab.id)}
-      activeOpacity={0.7}  // Visual feedback on press
+      activeOpacity={0.7}                               // Visual feedback on press
     >
       <Text style={[
         styles.tabButtonText,
@@ -197,12 +187,12 @@ const MyRidesScreen = ({ navigation, route }) => {
         onNotificationPress={handleNotificationPress}
         showNotificationBadge={unreadNotifications > 0}  // Show badge if unread notifications exist
       />
-
+      
       {/* Tab Navigation Section */}
       <View style={styles.tabContainer}>
         <ScrollView
-          horizontal  // Enable horizontal scrolling
-          showsHorizontalScrollIndicator={false}  // Hide scroll indicator
+          horizontal                                      // Enable horizontal scrolling
+          showsHorizontalScrollIndicator={false}          // Hide scroll indicator
           contentContainerStyle={styles.tabScrollView}
         >
           {tabs.map(renderTabButton)}
@@ -212,11 +202,11 @@ const MyRidesScreen = ({ navigation, route }) => {
       {/* Tab Content Section */}
       <View style={[commonStyles.customContainer, styles.contentContainer]}>
         <FlatList
-          data={getFilteredJobs()}  // Use filtered jobs based on active tab
+          data={getFilteredJobs()}                        // Use filtered jobs based on active tab
           renderItem={renderJobItem}
           keyExtractor={(item) => (item.id || Math.random()).toString()}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={  // Show when no jobs match the filter
+          ListEmptyComponent={                            // Show when no jobs match the filter
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 No {activeTab} rides found
@@ -236,50 +226,94 @@ const MyRidesScreen = ({ navigation, route }) => {
  * Includes tab navigation, content areas, and empty state styling.
  */
 const styles = StyleSheet.create({
+  /**
+   * Tab Container
+   * Container for the horizontal tab navigation
+   */
   tabContainer: {
-    backgroundColor: colors.white,  // White background
-    borderBottomWidth: 1,  // Bottom border separator
-    borderBottomColor: colors.border,  // Light gray border
+    backgroundColor: colors.white,          // White background
+    borderBottomWidth: 1,                  // Bottom border separator
+    borderBottomColor: colors.border,      // Light gray border
   },
+  
+  /**
+   * Tab Scroll View Content
+   * Content container for horizontally scrolling tabs
+   */
   tabScrollView: {
-    paddingHorizontal: 16,  // Horizontal padding
-    paddingVertical: 8,  // Vertical padding
+    paddingHorizontal: 16,                 // Horizontal padding
+    paddingVertical: 8,                    // Vertical padding
   },
+  
+  /**
+   * Individual Tab Button
+   * Styling for each tab button in inactive state
+   */
   tabButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginRight: 8,  // Right spacing between tabs
-    borderRadius: 20,  // Rounded pill shape
-    backgroundColor: colors.light,  // Light background for inactive
-    borderWidth: 1,
-    borderColor: colors.border,  // Light gray border
+    paddingVertical: 12,                   // Vertical padding
+    paddingHorizontal: 20,                 // Horizontal padding
+    marginRight: 8,                        // Right spacing between tabs
+    borderRadius: 20,                      // Rounded pill shape
+    backgroundColor: colors.light,         // Light background for inactive
+    borderWidth: 1,                        // Border outline
+    borderColor: colors.border,            // Light gray border
   },
+  
+  /**
+   * Active Tab Button
+   * Additional styling for the currently selected tab
+   */
   activeTabButton: {
-    backgroundColor: colors.themeColor,  // Theme color background
-    borderColor: colors.themeColor,  // Matching border color
+    backgroundColor: colors.themeColor,     // Theme color background
+    borderColor: colors.themeColor,        // Matching border color
   },
+  
+  /**
+   * Tab Button Text
+   * Text styling for inactive tab buttons
+   */
   tabButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textLight,  // Light gray text
+    fontSize: 14,                          // Medium text size
+    fontWeight: '500',                     // Medium font weight
+    color: colors.textLight,               // Light gray text
   },
+  
+  /**
+   * Active Tab Button Text
+   * Text styling for the active tab button
+   */
   activeTabButtonText: {
-    color: colors.white,  // White text on colored background
+    color: colors.white,                   // White text on colored background
   },
+  
+  /**
+   * Content Container
+   * Main content area below the tabs
+   */
   contentContainer: {
-    flex: 1,  // Take remaining space
-    paddingTop: 16,  // Top spacing from tabs
+    flex: 1,                               // Take remaining space
+    paddingTop: 16,                        // Top spacing from tabs
   },
+  
+  /**
+   * Empty State Container
+   * Container for empty state message
+   */
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
+    flex: 1,                               // Take full space
+    justifyContent: 'center',              // Center content vertically
+    alignItems: 'center',                  // Center content horizontally
+    paddingVertical: 60,                   // Vertical padding for spacing
   },
+  
+  /**
+   * Empty State Text
+   * Message shown when no jobs match the current filter
+   */
   emptyText: {
-    fontSize: 16,
-    color: colors.textLight,
-    textAlign: 'center',
+    fontSize: 16,                          // Medium text size
+    color: colors.textLight,               // Light gray color
+    textAlign: 'center',                   // Center align text
   },
 });
 

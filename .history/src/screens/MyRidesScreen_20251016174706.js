@@ -38,87 +38,41 @@ import JobCard from '../components/common/JobCard';
 import { useApp } from '../context/AppContext';
 import { colors, commonStyles } from '../styles/commonStyles';
 
-/**
- * MyRidesScreen Component
- * 
- * Main job history screen with tabbed filtering by job status.
- * Provides comprehensive view of all driver's job activities.
- * 
- * @param {Object} props - Component props
- * @param {Object} props.navigation - React Navigation object for screen navigation
- * @param {Object} props.route - React Navigation route object for params
- * @returns {JSX.Element} MyRidesScreen component
- */
 const MyRidesScreen = ({ navigation, route }) => {
-  // Get jobs data and notification count from global context
   const { jobs, unreadNotifications } = useApp();
 
-  // Local state for active tab selection
+  // Default tab is 'accepted'
   const [activeTab, setActiveTab] = useState('accepted');
 
-  /**
-   * Update activeTab when initialTab param is passed from HomeScreen
-   * This ensures the correct tab opens even if the screen is already mounted
-   */
+  // Update activeTab whenever initialTab param changes
   useEffect(() => {
     if (route.params?.initialTab) {
       setActiveTab(route.params.initialTab);
 
-      // Clear the param to prevent repeated updates on re-render
+      // Clear param to avoid repeated updates
       navigation.setParams({ initialTab: undefined });
     }
   }, [route.params?.initialTab]);
 
-  /**
-   * Handle Menu Press
-   * 
-   * Callback for hamburger menu button press.
-   * Currently logs to console - can be extended for drawer navigation.
-   */
   const handleMenuPress = () => {
     console.log('Menu pressed');
   };
 
-  /**
-   * Handle Notification Press
-   * 
-   * Navigates to the notification screen to view all notifications.
-   */
   const handleNotificationPress = () => {
     navigation.navigate('Notification');
   };
 
-  /**
-   * Handle Job Press
-   * 
-   * Navigates to job details screen with the selected job data.
-   * Passes the complete job object as a parameter.
-   * 
-   * @param {Object} job - The job object that was pressed
-   */
   const handleJobPress = (job) => {
     navigation.navigate('JobDetails', { job });
   };
 
-  /**
-   * Tab Configuration
-   * 
-   * Array defining the available job status tabs and their display labels.
-   * Each tab corresponds to a different job status in the workflow.
-   */
   const tabs = [
-    { id: 'accepted', label: 'Accepted' },     // Jobs accepted but not picked up
-    { id: 'pickedup', label: 'PickedUp' },     // Jobs picked up and in transit
-    { id: 'delivered', label: 'Delivered' },   // Successfully completed jobs
-    { id: 'cancelled', label: 'Cancel' },      // Cancelled or failed jobs
+    { id: 'accepted', label: 'Accepted' },
+    { id: 'pickedup', label: 'PickedUp' },
+    { id: 'delivered', label: 'Delivered' },
+    { id: 'cancelled', label: 'Cancel' },
   ];
 
-  /**
-   * Map API Status to Tab Status
-   * 
-   * Maps the status values from API to the tab filter values.
-   * This handles any discrepancy between API status names and UI tab names.
-   */
   const mapApiStatusToTabStatus = (apiStatus) => {
     const statusMap = {
       'new': 'new',
@@ -134,54 +88,29 @@ const MyRidesScreen = ({ navigation, route }) => {
     return statusMap[apiStatus?.toLowerCase()] || apiStatus;
   };
 
-  /**
-   * Get Filtered Jobs
-   * 
-   * Filters the jobs array based on the currently active tab.
-   * Returns only jobs that match the selected status.
-   * 
-   * @returns {Array} Array of jobs matching the active tab status
-   */
   const getFilteredJobs = () => {
     return jobs.filter(job => mapApiStatusToTabStatus(job.status) === activeTab);
   };
 
-  /**
-   * Render Tab Button
-   * 
-   * Renders individual tab buttons with active/inactive styling.
-   * 
-   * @param {Object} tab - Tab configuration object
-   * @returns {JSX.Element} TouchableOpacity tab button
-   */
   const renderTabButton = (tab) => (
     <TouchableOpacity
       key={tab.id}
       style={[
         styles.tabButton,
-        activeTab === tab.id && styles.activeTabButton  // Apply active styling conditionally
+        activeTab === tab.id && styles.activeTabButton
       ]}
       onPress={() => setActiveTab(tab.id)}
-      activeOpacity={0.7}  // Visual feedback on press
+      activeOpacity={0.7}
     >
       <Text style={[
         styles.tabButtonText,
-        activeTab === tab.id && styles.activeTabButtonText  // Apply active text styling
+        activeTab === tab.id && styles.activeTabButtonText
       ]}>
         {tab.label}
       </Text>
     </TouchableOpacity>
   );
 
-  /**
-   * Render Job Item
-   * 
-   * Renders individual job cards in the filtered list.
-   * 
-   * @param {Object} param - Render item parameters
-   * @param {Object} param.item - Job data object
-   * @returns {JSX.Element} JobCard component
-   */
   const renderJobItem = ({ item }) => (
     <JobCard
       job={item}
@@ -191,32 +120,29 @@ const MyRidesScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={commonStyles.container}>
-      {/* Header with menu, logo, and notifications */}
       <Header
         onMenuPress={handleMenuPress}
         onNotificationPress={handleNotificationPress}
-        showNotificationBadge={unreadNotifications > 0}  // Show badge if unread notifications exist
+        showNotificationBadge={unreadNotifications > 0}
       />
 
-      {/* Tab Navigation Section */}
       <View style={styles.tabContainer}>
         <ScrollView
-          horizontal  // Enable horizontal scrolling
-          showsHorizontalScrollIndicator={false}  // Hide scroll indicator
+          horizontal
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabScrollView}
         >
           {tabs.map(renderTabButton)}
         </ScrollView>
       </View>
 
-      {/* Tab Content Section */}
       <View style={[commonStyles.customContainer, styles.contentContainer]}>
         <FlatList
-          data={getFilteredJobs()}  // Use filtered jobs based on active tab
+          data={getFilteredJobs()}
           renderItem={renderJobItem}
           keyExtractor={(item) => (item.id || Math.random()).toString()}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={  // Show when no jobs match the filter
+          ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>
                 No {activeTab} rides found
@@ -229,46 +155,40 @@ const MyRidesScreen = ({ navigation, route }) => {
   );
 };
 
-/**
- * Component-Specific Styles
- * 
- * Styles specific to the MyRidesScreen component layout and design.
- * Includes tab navigation, content areas, and empty state styling.
- */
 const styles = StyleSheet.create({
   tabContainer: {
-    backgroundColor: colors.white,  // White background
-    borderBottomWidth: 1,  // Bottom border separator
-    borderBottomColor: colors.border,  // Light gray border
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   tabScrollView: {
-    paddingHorizontal: 16,  // Horizontal padding
-    paddingVertical: 8,  // Vertical padding
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   tabButton: {
     paddingVertical: 12,
     paddingHorizontal: 20,
-    marginRight: 8,  // Right spacing between tabs
-    borderRadius: 20,  // Rounded pill shape
-    backgroundColor: colors.light,  // Light background for inactive
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: colors.light,
     borderWidth: 1,
-    borderColor: colors.border,  // Light gray border
+    borderColor: colors.border,
   },
   activeTabButton: {
-    backgroundColor: colors.themeColor,  // Theme color background
-    borderColor: colors.themeColor,  // Matching border color
+    backgroundColor: colors.themeColor,
+    borderColor: colors.themeColor,
   },
   tabButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.textLight,  // Light gray text
+    color: colors.textLight,
   },
   activeTabButtonText: {
-    color: colors.white,  // White text on colored background
+    color: colors.white,
   },
   contentContainer: {
-    flex: 1,  // Take remaining space
-    paddingTop: 16,  // Top spacing from tabs
+    flex: 1,
+    paddingTop: 16,
   },
   emptyContainer: {
     flex: 1,
