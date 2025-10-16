@@ -71,15 +71,16 @@ const JobCard = ({ job, onPress }) => {
         
         {/* Company and Order Information */}
         <View style={styles.myRideContent}>
-          <View style={{ flexDirection: 'column' }}>
-  <Text style={[styles.companyName, commonStyles.titleColor, commonStyles.fwMedium]}>
-    {job.companyName}
-  </Text>
-  <Text style={[styles.orderId, commonStyles.themeColor, commonStyles.fwMedium]}>
-    Order Id : {job.orderId}
-  </Text>
-</View>
-
+          <View style={commonStyles.flexSpacing}>
+            {/* Company Name */}
+            <Text style={[styles.companyName, commonStyles.titleColor, commonStyles.fwMedium]}>
+              {job.companyName}
+            </Text>
+            {/* Order ID */}
+            <Text style={[styles.orderId, commonStyles.themeColor, commonStyles.fwMedium]}>
+              Order Id : {job.orderId}
+            </Text>
+          </View>
         </View>
       </View>
       
