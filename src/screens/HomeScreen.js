@@ -86,6 +86,26 @@ const HomeScreen = ({ navigation }) => {
   }, [navigation, loadDashboardData]);
 
   /**
+   * Tab Press Effect
+   * 
+   * Scrolls to top when Home tab is pressed while already on Home screen.
+   * Provides quick navigation back to top of the page.
+   */
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e) => {
+      // Only scroll to top if we're already on the Home screen
+      if (navigation.isFocused()) {
+        scrollViewRef.current?.scrollTo({
+          y: 0,
+          animated: true,
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  /**
    * Statistics Data Configuration
    * 
    * Creates an array of statistics cards to display job counts by status.
@@ -160,12 +180,23 @@ const HomeScreen = ({ navigation }) => {
    * Handle Menu Navigation
    * 
    * Handles navigation when a menu item is selected.
+   * If Home is selected and we're already on Home screen, scroll to top.
    * 
    * @param {string} route - The route to navigate to
    */
   const handleMenuNavigation = (route) => {
     setMenuVisible(false);
-    navigation.navigate(route);
+    
+    if (route === 'Home') {
+      // If we're already on the Home screen, scroll to top
+      scrollViewRef.current?.scrollTo({
+        y: 0,
+        animated: true,
+      });
+    } else {
+      // Navigate to other screens
+      navigation.navigate(route);
+    }
   };
 
   /**
