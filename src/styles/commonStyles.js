@@ -41,7 +41,7 @@ const { width, height } = Dimensions.get('window');
  */
 export const colors = {
   // Original Theme Colors (matching CSS variables)
-  themeColor: '#199675',                 // Main theme color (25, 150, 117) - Teal green
+  themeColor: '#00897B',                 // Main theme color - Modern teal green
   titleColor: '#1f1f1f',                 // Primary text color (31, 31, 31) - Dark gray
   contentColor: '#8f8f8f',               // Content/secondary text (143, 143, 143) - Medium gray
   secondaryColor: '#ffb400',             // Secondary accent (255, 180, 0) - Orange
@@ -113,14 +113,19 @@ export const commonStyles = StyleSheet.create({
   
   /**
    * App Header
-   * Standard header styling with bottom border
+   * Modern thin header with fixed height and elevation
    */
   header: {
-    backgroundColor: colors.themeColor,      // Theme color background (teal green)
-    paddingHorizontal: 16,               // Horizontal padding
-    paddingVertical: 12,                 // Vertical padding
-    borderBottomWidth: 1,                // Bottom border line
-    borderBottomColor: colors.lineColor, // Light gray border
+    backgroundColor: '#00897B',              // Consistent modern teal color
+    height: 56,                              // Fixed height for modern look
+    paddingHorizontal: 16,                   // Horizontal padding
+    justifyContent: 'center',                // Center content vertically
+    elevation: 4,                            // Android shadow
+    shadowColor: '#000',                     // iOS shadow
+    shadowOffset: { width: 0, height: 2 },  // iOS shadow offset
+    shadowOpacity: 0.1,                     // iOS shadow opacity
+    shadowRadius: 4,                        // iOS shadow blur
+    borderBottomWidth: 0,                    // Remove bottom border for clean look
   },
   
   /**
@@ -131,6 +136,8 @@ export const commonStyles = StyleSheet.create({
     flexDirection: 'row',                // Horizontal layout
     justifyContent: 'space-between',     // Space items apart
     alignItems: 'center',                // Center align vertically
+    flex: 1,                             // Take full height of header
+    paddingVertical: 0,                  // Remove vertical padding
   },
   
   // === FLEX UTILITIES ===

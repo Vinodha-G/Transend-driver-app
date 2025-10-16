@@ -37,7 +37,7 @@ import { colors, commonStyles } from '../../styles/commonStyles';
  * Header Component
  * 
  * Renders the main app header with navigation menu, logo, and notification icon.
- * Automatically handles status bar spacing and responsive layout.
+ * Modern thin design with fixed height and proper status bar handling.
  * 
  * @param {Object} props - Component props
  * @param {Function} props.onMenuPress - Callback for menu button press
@@ -47,7 +47,7 @@ import { colors, commonStyles } from '../../styles/commonStyles';
  */
 const Header = ({ onMenuPress, onNotificationPress, showNotificationBadge = false }) => {
   return (
-    <View style={[commonStyles.header, styles.header]}>
+    <View style={[commonStyles.header, styles.headerContainer]}>
       <View style={commonStyles.headerPanel}>
         {/* Left Section: Menu Button and Logo */}
         <View style={[commonStyles.flexAlignCenter, commonStyles.gap2]}>
@@ -106,10 +106,10 @@ const Header = ({ onMenuPress, onNotificationPress, showNotificationBadge = fals
 const styles = StyleSheet.create({
   /**
    * Header Container
-   * Adds top padding to account for device status bar on different devices
+   * No additional padding needed since SafeAreaView handles status bar spacing
    */
-  header: {
-    paddingTop: 50,                      // Status bar spacing (iOS/Android safe area)
+  headerContainer: {
+    // SafeAreaView in parent screens handles status bar spacing
   },
   
   /**

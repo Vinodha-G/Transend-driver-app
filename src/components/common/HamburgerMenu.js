@@ -32,7 +32,9 @@ import {
   Dimensions,
   StyleSheet,
   StatusBar,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/commonStyles';
 
@@ -155,7 +157,7 @@ const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
       transparent={true}
       animationType="none"
       onRequestClose={onClose}
-      statusBarTranslucent={true}
+      statusBarTranslucent={false}
     >
       <View style={styles.modalContainer}>
         {/* Overlay Background */}
@@ -181,76 +183,84 @@ const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
             },
           ]}
         >
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            {/* Profile Image */}
-            <View style={styles.profileImageContainer}>
-              {user?.profileImage || user?.image ? (
-                <Image 
-                  source={{ uri: user.profileImage || user.image }} 
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={styles.defaultProfileImage}>
-                  <Ionicons 
-                    name="person" 
-                    size={40} 
-                    color={colors.textLight} 
+          <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            {/* Profile Header Section - Fixed at top */}
+            <View style={styles.profileSection}>
+              {/* Profile Image */}
+              <View style={styles.profileImageContainer}>
+                {user?.profileImage || user?.image ? (
+                  <Image 
+                    source={{ uri: user.profileImage || user.image }} 
+                    style={styles.profileImage}
                   />
-                </View>
+                ) : (
+                  <View style={styles.defaultProfileImage}>
+                    <Ionicons 
+                      name="person" 
+                      size={40} 
+                      color={colors.textLight} 
+                    />
+                  </View>
+                )}
+              </View>
+
+              {/* User Name */}
+              <Text style={styles.userName}>
+                {user?.name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Driver'}
+              </Text>
+              
+              {/* User Email (if available) */}
+              {user?.email && (
+                <Text style={styles.userEmail}>{user.email}</Text>
               )}
             </View>
 
-            {/* User Name */}
-            <Text style={styles.userName}>
-              {user?.name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Driver'}
-            </Text>
-            
-            {/* User Email (if available) */}
-            {user?.email && (
-              <Text style={styles.userEmail}>{user.email}</Text>
-            )}
-          </View>
+            {/* Scrollable Menu Items */}
+            <ScrollView 
+              contentContainerStyle={styles.scrollArea}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Divider */}
+              <View style={styles.divider} />
 
-          {/* Divider */}
-          <View style={styles.divider} />
+              {/* Menu Items */}
+              <View style={styles.menuItemsContainer}>
+                {menuItems.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.menuItem}
+                    onPress={() => handleItemPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.menuItemContent}>
+                      {/* Menu Item Icon */}
+                      <Ionicons 
+                        name={item.icon} 
+                        size={24} 
+                        color={colors.titleColor}
+                        style={styles.menuItemIcon}
+                      />
+                      
+                      {/* Menu Item Text */}
+                      <Text style={styles.menuItemText}>
+                        {item.title}
+                      </Text>
+                    </View>
 
-          {/* Menu Items */}
-          <View style={styles.menuItemsContainer}>
-            {menuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.menuItem}
-                onPress={() => handleItemPress(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuItemContent}>
-                  {/* Menu Item Icon */}
-                  <Ionicons 
-                    name={item.icon} 
-                    size={24} 
-                    color={colors.titleColor}
-                    style={styles.menuItemIcon}
-                  />
-                  
-                  {/* Menu Item Text */}
-                  <Text style={styles.menuItemText}>
-                    {item.title}
-                  </Text>
-                </View>
+                    {/* Arrow Indicator */}
+                    <Ionicons 
+                      name="chevron-forward" 
+                      size={20} 
+                      color={colors.textLight} 
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-                {/* Arrow Indicator */}
-                <Ionicons 
-                  name="chevron-forward" 
-                  size={20} 
-                  color={colors.textLight} 
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Footer Space */}
-          <View style={styles.footerSpace} />
+              {/* Bottom spacer for scroll content */}
+              <View style={styles.scrollBottomSpacer} />
+            </ScrollView>
+          </SafeAreaView>
         </Animated.View>
       </View>
     </Modal>
@@ -264,6 +274,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: 'transparent',
   },
   
   overlay: {
@@ -292,13 +303,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+
+  container: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+
+  scrollArea: {
+    flexGrow: 1,
+    paddingTop: 10,
+    paddingBottom: 40, // ensures it reaches bottom safely
+  },
   
   profileSection: {
-    paddingTop: StatusBar.currentHeight || 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    alignItems: 'center',
     backgroundColor: colors.themeColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   
   profileImageContainer: {
@@ -347,6 +369,8 @@ const styles = StyleSheet.create({
   
   menuItemsContainer: {
     paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 0,
   },
   
   menuItem: {
@@ -376,9 +400,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  footerSpace: {
-    flex: 1,
-    minHeight: 50,
+  scrollBottomSpacer: {
+    height: 50,
+    backgroundColor: colors.white,
   },
 });
 
