@@ -123,12 +123,25 @@ const HomeScreen = ({ navigation }) => {
   const newJobs = jobs.filter(job => job.status === 'new');
 
 
- const scrollToJobs = () => {
-  if (scrollViewRef.current) {
-    scrollViewRef.current.scrollTo({ y: jobsSectionY.current, animated: true });
+  const scrollToJobs = () => {
+  const scrollViewNode = scrollViewRef.current?.getInnerViewNode
+    ? scrollViewRef.current.getInnerViewNode()
+    : findNodeHandle(scrollViewRef.current);
+
+  const jobsNode = findNodeHandle(jobsSectionRef.current);
+
+  if (scrollViewNode && jobsNode) {
+    jobsSectionRef.current.measureLayout(
+      scrollViewNode,
+      (x, y) => {
+        scrollViewRef.current.scrollTo({ y: y, animated: true });
+      },
+      (error) => {
+        console.log('measureLayout error:', error);
+      }
+    );
   }
 };
-
 
 
   /**

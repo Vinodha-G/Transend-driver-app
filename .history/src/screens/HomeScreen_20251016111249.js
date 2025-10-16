@@ -27,8 +27,8 @@
  * @version 1.0.0
  */
 
-import React, { useEffect, useRef} from 'react';
-import { View, Text, ScrollView, FlatList, StyleSheet, RefreshControl, findNodeHandle  } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
@@ -50,9 +50,6 @@ import { colors, commonStyles } from '../styles/commonStyles';
  */
 const HomeScreen = ({ navigation }) => {
   // Get app data and functions from global context
-   const scrollViewRef = useRef(null);
-  const jobsSectionRef = useRef(null);
-  const jobsSectionY = useRef(0);
   const {
     jobs,
     jobStats,
@@ -122,15 +119,6 @@ const HomeScreen = ({ navigation }) => {
    */
   const newJobs = jobs.filter(job => job.status === 'new');
 
-
- const scrollToJobs = () => {
-  if (scrollViewRef.current) {
-    scrollViewRef.current.scrollTo({ y: jobsSectionY.current, animated: true });
-  }
-};
-
-
-
   /**
    * Handle Menu Press
    * 
@@ -171,13 +159,8 @@ const HomeScreen = ({ navigation }) => {
    * @param {Object} statsItem - The statistics item that was pressed
    */
   const handleStatsPress = (statsItem) => {
-  if (statsItem.title === 'New Order') {
-    scrollToJobs(); // Scroll to New Jobs section
-  } else {
     navigation.navigate('MyRides');
-  }
-};
-
+  };
 
   /**
    * Handle Job Card Press
@@ -190,9 +173,6 @@ const HomeScreen = ({ navigation }) => {
   const handleJobPress = (job) => {
     navigation.navigate('JobDetails', { job });
   };
-
-
-  
 
   /**
    * Render Statistics Item
@@ -240,7 +220,6 @@ const HomeScreen = ({ navigation }) => {
       
       {/* Main content area with scrollable sections and pull-to-refresh */}
       <ScrollView 
-      ref={scrollViewRef}  
         style={styles.scrollView}
         refreshControl={
           <RefreshControl
@@ -266,12 +245,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* New Jobs Section - List of available jobs */}
-        <View   ref={jobsSectionRef}
-  onLayout={(event) => {
-    jobsSectionY.current = event.nativeEvent.layout.y; // Save Y position when layout is ready
-  }}
-  style={[commonStyles.customContainer, styles.jobsSection]}
->
+        <View style={[commonStyles.customContainer, styles.jobsSection]}>
           <Text style={styles.sectionTitle}>New Job's</Text>
           <FlatList
             data={newJobs}
