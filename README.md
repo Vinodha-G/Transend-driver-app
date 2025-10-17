@@ -3,6 +3,8 @@
 
 > A comprehensive transportation/logistics driver mobile app built with React Native and Expo, converted from HTML/CSS/JavaScript web application with 100% feature parity.
 
+quick check
+
 ## 🚀 **Quick Start**
 
 ### Prerequisites
