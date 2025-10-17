@@ -16,6 +16,7 @@
 import { StatusBar } from 'expo-status-bar';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AppProvider } from './src/context/AppContext';
+import { ThemeProvider } from './src/context/ThemeContext';
 
 /**
  * Main App Component
@@ -27,12 +28,14 @@ import { AppProvider } from './src/context/AppContext';
  */
 export default function App() {
   return (
-    <AppProvider>
-      {/* Main navigation system with all screen routing */}
-      <AppNavigator />
-      
-      {/* Status bar configuration - auto adjusts for light/dark content */}
-      <StatusBar style="auto" />
-    </AppProvider>
+    <ThemeProvider>
+      <AppProvider>
+        {/* Main navigation system with all screen routing */}
+        <AppNavigator />
+        
+        {/* Status bar configuration - auto adjusts for light/dark content */}
+        <StatusBar style="auto" />
+      </AppProvider>
+    </ThemeProvider>
   );
 }
