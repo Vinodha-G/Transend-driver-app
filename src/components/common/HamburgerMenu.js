@@ -36,7 +36,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../styles/commonStyles';
+import { Switch } from 'react-native';
+import { colors, createThemedStyles } from '../../styles/commonStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const MENU_WIDTH = screenWidth * 0.8; // 80% of screen width
@@ -56,6 +58,12 @@ const MENU_WIDTH = screenWidth * 0.8; // 80% of screen width
 const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
   const slideAnim = useRef(new Animated.Value(-MENU_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Get theme context
+  const { theme, isDarkMode, toggleTheme } = useTheme();
+  
+  // Get themed styles
+  const styles = useStyles(theme);
 
   /**
    * Menu Items Configuration
@@ -198,20 +206,20 @@ const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
                     <Ionicons 
                       name="person" 
                       size={40} 
-                      color={colors.textLight} 
+                      color="#FFFFFF" 
                     />
                   </View>
                 )}
               </View>
 
               {/* User Name */}
-              <Text style={styles.userName}>
+              <Text style={[styles.userName, { color: '#FFFFFF' }]}>
                 {user?.name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Driver'}
               </Text>
               
               {/* User Email (if available) */}
               {user?.email && (
-                <Text style={styles.userEmail}>{user.email}</Text>
+                <Text style={[styles.userEmail, { color: '#E0E0E0' }]}>{user.email}</Text>
               )}
             </View>
 
@@ -237,12 +245,12 @@ const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
                       <Ionicons 
                         name={item.icon} 
                         size={24} 
-                        color={colors.titleColor}
+                        color={theme.text}
                         style={styles.menuItemIcon}
                       />
                       
                       {/* Menu Item Text */}
-                      <Text style={styles.menuItemText}>
+                      <Text style={[styles.menuItemText, { color: theme.text }]}>
                         {item.title}
                       </Text>
                     </View>
@@ -251,10 +259,40 @@ const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
                     <Ionicons 
                       name="chevron-forward" 
                       size={20} 
-                      color={colors.textLight} 
+                      color={theme.textSecondary} 
                     />
                   </TouchableOpacity>
                 ))}
+                
+                {/* Dark Mode Toggle */}
+                <View style={styles.darkModeContainer}>
+                  <View style={styles.menuItemContent}>
+                    {/* Dark Mode Icon */}
+                    <Ionicons 
+                      name={isDarkMode ? "moon" : "moon-outline"} 
+                      size={24} 
+                      color={theme.text}
+                      style={styles.menuItemIcon}
+                    />
+                    
+                    {/* Dark Mode Text */}
+                    <Text style={[styles.menuItemText, { color: theme.text }]}>
+                      Dark Mode
+                    </Text>
+                  </View>
+
+                  {/* Dark Mode Switch */}
+                  <Switch
+                    value={isDarkMode}
+                    onValueChange={toggleTheme}
+                    trackColor={{ 
+                      false: theme.border, 
+                      true: theme.primary 
+                    }}
+                    thumbColor={isDarkMode ? '#FFFFFF' : '#F4F3F4'}
+                    ios_backgroundColor={theme.border}
+                  />
+                </View>
               </View>
 
               {/* Bottom spacer for scroll content */}
@@ -268,9 +306,9 @@ const HamburgerMenu = ({ visible, onClose, onNavigate, user }) => {
 };
 
 /**
- * Component Styles
+ * Create Themed Styles
  */
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles((theme) => ({
   modalContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -306,7 +344,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.background,
   },
 
   scrollArea: {
@@ -316,7 +354,7 @@ const styles = StyleSheet.create({
   },
   
   profileSection: {
-    backgroundColor: colors.themeColor,
+    backgroundColor: '#00897B',              // Keep consistent teal color in both themes
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 40,
@@ -363,7 +401,7 @@ const styles = StyleSheet.create({
   
   divider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: theme.border,
     marginVertical: 10,
   },
   
@@ -396,14 +434,27 @@ const styles = StyleSheet.create({
   
   menuItemText: {
     fontSize: 16,
-    color: colors.titleColor,
+    color: theme.text,
     fontWeight: '500',
+  },
+  
+  darkModeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginVertical: 2,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
   },
   
   scrollBottomSpacer: {
     height: 50,
-    backgroundColor: colors.white,
+    backgroundColor: theme.background,
   },
-});
+}));
 
 export default HamburgerMenu;

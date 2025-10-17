@@ -6,10 +6,11 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -33,8 +34,10 @@ const Stack = createStackNavigator();
  * MainTabs Component - Bottom Tabs
  */
 function MainTabs() {
+  const { theme } = useTheme();
+  
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
@@ -45,12 +48,12 @@ function MainTabs() {
             else if (route.name === 'Settings') iconName = focused ? 'settings' : 'settings-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: colors.themeColor,
-          tabBarInactiveTintColor: colors.textLight,
+          tabBarActiveTintColor: theme.tabActive,
+          tabBarInactiveTintColor: theme.tabInactive,
           tabBarStyle: {
-            backgroundColor: colors.white,
+            backgroundColor: theme.background,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
+            borderTopColor: theme.border,
             height: Platform.OS === 'ios' ? 80 : 70,
             paddingBottom: Platform.OS === 'ios' ? 20 : 10,
             paddingTop: 8,
@@ -75,8 +78,23 @@ function MainTabs() {
  * AppNavigator - Root Stack
  */
 export default function AppNavigator() {
+  const { theme, isDarkMode } = useTheme();
+  
+  // Create theme for React Navigation
+  const navigationTheme = {
+    ...(isDarkMode ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDarkMode ? DarkTheme.colors : DefaultTheme.colors),
+      primary: theme.primary,
+      background: theme.background,
+      card: theme.surface,
+      text: theme.text,
+      border: theme.border,
+    },
+  };
+  
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator>
         <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
         <Stack.Screen
@@ -84,8 +102,8 @@ export default function AppNavigator() {
           component={NotificationScreen}
           options={{
             title: 'Notifications',
-            headerStyle: { backgroundColor: colors.white },
-            headerTintColor: colors.titleColor,
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         />
@@ -94,8 +112,8 @@ export default function AppNavigator() {
           component={ProfileSettingScreen}
           options={{
             title: 'Profile Settings',
-            headerStyle: { backgroundColor: colors.white },
-            headerTintColor: colors.titleColor,
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         />
@@ -104,8 +122,8 @@ export default function AppNavigator() {
           component={JobDetailsScreen}
           options={{
             title: 'Job Details',
-            headerStyle: { backgroundColor: colors.white },
-            headerTintColor: colors.titleColor,
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         />
@@ -114,8 +132,8 @@ export default function AppNavigator() {
           component={DocumentsScreen}
           options={{
             title: 'Documents',
-            headerStyle: { backgroundColor: colors.white },
-            headerTintColor: colors.titleColor,
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         />
@@ -124,8 +142,8 @@ export default function AppNavigator() {
           component={VehicleScreen}
           options={{
             title: 'Vehicle Details',
-            headerStyle: { backgroundColor: colors.white },
-            headerTintColor: colors.titleColor,
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         />
@@ -134,8 +152,8 @@ export default function AppNavigator() {
           component={BankDetailsScreen}
           options={{
             title: 'Bank Details',
-            headerStyle: { backgroundColor: colors.white },
-            headerTintColor: colors.titleColor,
+            headerStyle: { backgroundColor: theme.background },
+            headerTintColor: theme.text,
             headerTitleStyle: { fontWeight: 'bold' },
           }}
         />

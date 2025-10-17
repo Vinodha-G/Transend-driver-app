@@ -1,8 +1,9 @@
 /**
- * commonStyles.js - Centralized Styling System
+ * commonStyles.js - Centralized Styling System with Theme Support
  * 
  * This file contains all the common styles, colors, and design tokens used throughout
  * the Driver App. It ensures visual consistency and makes theme management easier.
+ * Now includes theme-aware styling functions for dark/light mode support.
  * 
  * Style Categories:
  * - Color palette with Bootstrap-inspired naming
@@ -10,14 +11,16 @@
  * - Layout and spacing utilities
  * - Component-specific style helpers
  * - Responsive design utilities
+ * - Theme-aware style functions
  * 
  * Usage:
  * - Import colors and styles in components
  * - Use semantic color names for theming
  * - Apply utility classes for quick styling
+ * - Use createThemedStyles for theme-aware components
  * 
  * @author Driver App Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { StyleSheet, Dimensions } from 'react-native';
@@ -314,6 +317,69 @@ export const commonStyles = StyleSheet.create({
    */
   gap3: {
     gap: 12,
+  },
+});
+
+/**
+ * Create Themed Styles Function
+ * 
+ * Creates StyleSheet with theme-aware colors that automatically adapt
+ * to light/dark mode based on the provided theme object.
+ * 
+ * @param {Object} theme - Theme object with color definitions
+ * @returns {Function} Function that creates themed styles
+ * 
+ * Usage:
+ * const useStyles = createThemedStyles((theme) => ({
+ *   container: {
+ *     backgroundColor: theme.background,
+ *     color: theme.text,
+ *   },
+ * }));
+ * 
+ * // In component:
+ * const styles = useStyles(theme);
+ */
+export const createThemedStyles = (styleFunction) => {
+  return (theme) => StyleSheet.create(styleFunction(theme));
+};
+
+/**
+ * Get themed common styles
+ * 
+ * Returns common styles with theme-specific colors applied
+ * 
+ * @param {Object} theme - Theme object with color definitions
+ * @returns {Object} Themed common styles
+ */
+export const getThemedCommonStyles = (theme) => StyleSheet.create({
+  // Override specific styles with theme colors
+  container: {
+    ...commonStyles.container,
+    backgroundColor: theme.background,
+  },
+  
+  header: {
+    ...commonStyles.header,
+    backgroundColor: theme.header,
+  },
+  
+  // Add more theme-specific overrides as needed
+  text: {
+    color: theme.text,
+  },
+  
+  textSecondary: {
+    color: theme.textSecondary,
+  },
+  
+  surface: {
+    backgroundColor: theme.surface,
+  },
+  
+  card: {
+    backgroundColor: theme.surface,
+    borderColor: theme.border,
   },
 });
 
