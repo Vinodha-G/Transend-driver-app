@@ -1,8 +1,9 @@
 /**
- * commonStyles.js - Centralized Styling System
+ * commonStyles.js - Centralized Styling System with Theme Support
  * 
  * This file contains all the common styles, colors, and design tokens used throughout
  * the Driver App. It ensures visual consistency and makes theme management easier.
+ * Now includes theme-aware styling functions for dark/light mode support.
  * 
  * Style Categories:
  * - Color palette with Bootstrap-inspired naming
@@ -10,14 +11,16 @@
  * - Layout and spacing utilities
  * - Component-specific style helpers
  * - Responsive design utilities
+ * - Theme-aware style functions
  * 
  * Usage:
  * - Import colors and styles in components
  * - Use semantic color names for theming
  * - Apply utility classes for quick styling
+ * - Use createThemedStyles for theme-aware components
  * 
  * @author Driver App Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { StyleSheet, Dimensions } from 'react-native';
@@ -41,7 +44,7 @@ const { width, height } = Dimensions.get('window');
  */
 export const colors = {
   // Original Theme Colors (matching CSS variables)
-  themeColor: '#199675',                 // Main theme color (25, 150, 117) - Teal green
+  themeColor: '#00897B',                 // Main theme color - Modern teal green
   titleColor: '#1f1f1f',                 // Primary text color (31, 31, 31) - Dark gray
   contentColor: '#8f8f8f',               // Content/secondary text (143, 143, 143) - Medium gray
   secondaryColor: '#ffb400',             // Secondary accent (255, 180, 0) - Orange
@@ -113,14 +116,19 @@ export const commonStyles = StyleSheet.create({
   
   /**
    * App Header
-   * Standard header styling with bottom border
+   * Modern thin header with fixed height and elevation
    */
   header: {
-    backgroundColor: colors.themeColor,      // Theme color background (teal green)
-    paddingHorizontal: 16,               // Horizontal padding
-    paddingVertical: 12,                 // Vertical padding
-    borderBottomWidth: 1,                // Bottom border line
-    borderBottomColor: colors.lineColor, // Light gray border
+    backgroundColor: '#00897B',              // Consistent modern teal color
+    height: 56,                              // Fixed height for modern look
+    paddingHorizontal: 16,                   // Horizontal padding
+    justifyContent: 'center',                // Center content vertically
+    elevation: 4,                            // Android shadow
+    shadowColor: '#000',                     // iOS shadow
+    shadowOffset: { width: 0, height: 2 },  // iOS shadow offset
+    shadowOpacity: 0.1,                     // iOS shadow opacity
+    shadowRadius: 4,                        // iOS shadow blur
+    borderBottomWidth: 0,                    // Remove bottom border for clean look
   },
   
   /**
@@ -131,6 +139,8 @@ export const commonStyles = StyleSheet.create({
     flexDirection: 'row',                // Horizontal layout
     justifyContent: 'space-between',     // Space items apart
     alignItems: 'center',                // Center align vertically
+    flex: 1,                             // Take full height of header
+    paddingVertical: 0,                  // Remove vertical padding
   },
   
   // === FLEX UTILITIES ===
@@ -307,6 +317,69 @@ export const commonStyles = StyleSheet.create({
    */
   gap3: {
     gap: 12,
+  },
+});
+
+/**
+ * Create Themed Styles Function
+ * 
+ * Creates StyleSheet with theme-aware colors that automatically adapt
+ * to light/dark mode based on the provided theme object.
+ * 
+ * @param {Object} theme - Theme object with color definitions
+ * @returns {Function} Function that creates themed styles
+ * 
+ * Usage:
+ * const useStyles = createThemedStyles((theme) => ({
+ *   container: {
+ *     backgroundColor: theme.background,
+ *     color: theme.text,
+ *   },
+ * }));
+ * 
+ * // In component:
+ * const styles = useStyles(theme);
+ */
+export const createThemedStyles = (styleFunction) => {
+  return (theme) => StyleSheet.create(styleFunction(theme));
+};
+
+/**
+ * Get themed common styles
+ * 
+ * Returns common styles with theme-specific colors applied
+ * 
+ * @param {Object} theme - Theme object with color definitions
+ * @returns {Object} Themed common styles
+ */
+export const getThemedCommonStyles = (theme) => StyleSheet.create({
+  // Override specific styles with theme colors
+  container: {
+    ...commonStyles.container,
+    backgroundColor: theme.background,
+  },
+  
+  header: {
+    ...commonStyles.header,
+    backgroundColor: theme.header,
+  },
+  
+  // Add more theme-specific overrides as needed
+  text: {
+    color: theme.text,
+  },
+  
+  textSecondary: {
+    color: theme.textSecondary,
+  },
+  
+  surface: {
+    backgroundColor: theme.surface,
+  },
+  
+  card: {
+    backgroundColor: theme.surface,
+    borderColor: theme.border,
   },
 });
 

@@ -31,13 +31,14 @@
 import React from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, commonStyles } from '../../styles/commonStyles';
+import { colors, commonStyles, createThemedStyles } from '../../styles/commonStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 /**
  * Header Component
  * 
  * Renders the main app header with navigation menu, logo, and notification icon.
- * Automatically handles status bar spacing and responsive layout.
+ * Modern thin design with fixed height and proper status bar handling.
  * 
  * @param {Object} props - Component props
  * @param {Function} props.onMenuPress - Callback for menu button press
@@ -46,8 +47,11 @@ import { colors, commonStyles } from '../../styles/commonStyles';
  * @returns {JSX.Element} Header component
  */
 const Header = ({ onMenuPress, onNotificationPress, showNotificationBadge = false }) => {
+  const { theme } = useTheme();
+  const themedStyles = useThemedStyles(theme);
+  
   return (
-    <View style={[commonStyles.header, styles.header]}>
+    <View style={[themedStyles.header, styles.headerContainer]}>
       <View style={commonStyles.headerPanel}>
         {/* Left Section: Menu Button and Logo */}
         <View style={[commonStyles.flexAlignCenter, commonStyles.gap2]}>
@@ -60,7 +64,7 @@ const Header = ({ onMenuPress, onNotificationPress, showNotificationBadge = fals
             <Ionicons 
               name="menu" 
               size={24} 
-              color={colors.white}              // White color for visibility on content-color background
+              color={theme.textLight}           // Theme-based icon color
             />
           </TouchableOpacity>
           
@@ -84,7 +88,7 @@ const Header = ({ onMenuPress, onNotificationPress, showNotificationBadge = fals
             <Ionicons 
               name="notifications" 
               size={24} 
-              color={colors.white}              // White color for visibility on content-color background
+              color={theme.textLight}           // Theme-based icon color
             />
             
             {/* Notification Badge (small red dot) */}
@@ -99,17 +103,33 @@ const Header = ({ onMenuPress, onNotificationPress, showNotificationBadge = fals
 };
 
 /**
+ * Create Themed Header Styles
+ */
+const useThemedStyles = createThemedStyles((theme) => ({
+  header: {
+    backgroundColor: theme.header,
+    height: 56,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderBottomWidth: 0,
+  },
+}));
+
+/**
  * Component-Specific Styles
- * 
- * Styles that are specific to the Header component and not part of the global style system.
  */
 const styles = StyleSheet.create({
   /**
    * Header Container
-   * Adds top padding to account for device status bar on different devices
+   * Handles status bar spacing for the modern thin header
    */
-  header: {
-    paddingTop: 50,                      // Status bar spacing (iOS/Android safe area)
+  headerContainer: {
+    // SafeAreaView in parent screens handles status bar spacing
   },
   
   /**
