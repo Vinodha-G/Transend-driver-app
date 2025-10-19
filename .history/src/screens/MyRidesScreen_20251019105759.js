@@ -153,15 +153,16 @@ const MyRidesScreen = ({ navigation, route }) => {
    * Uses jobStats for counts like HomeScreen
    * @param {string} tabId - Tab id
    */
-  const getTabCount = (tabId) => {
-    switch(tabId){
-      case 'accepted': return jobStats?.accepted || 0;
-      case 'pickedup': return jobStats?.pickedup || 0;
-      case 'delivered': return jobStats?.delivered || 0;
-      case 'cancelled': return jobs.filter(job => mapApiStatusToTabStatus(job.status) === 'cancelled').length;
-      default: return 0;
-    }
-  };
+  // const getTabCount = (tabId) => {
+  //   switch(tabId){
+  //     case 'accepted': return jobStats?.accepted || 0;
+  //     case 'pickedup': return jobStats?.pickedup || 0;
+  //     case 'delivered': return jobStats?.delivered || 0;
+  //     case 'cancelled': return jobs.filter(job => mapApiStatusToTabStatus(job.status) === 'cancelled').length;
+  //     default: return 0;
+  //   }
+  // };
+  
 
   /**
    * Get Filtered Jobs

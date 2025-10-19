@@ -28,7 +28,7 @@
  * - Real-time filtering based on job status
  * 
  * @author Driver App Team
- * @version 1.3.0
+ * @version 1.2.0
  */
 
 import React, { useState, useEffect } from 'react';
@@ -80,6 +80,7 @@ const MyRidesScreen = ({ navigation, route }) => {
    * Opens the hamburger menu
    */
   const handleMenuPress = () => {
+    console.log('Menu pressed');
     setMenuVisible(true);
   };
 
@@ -149,26 +150,30 @@ const MyRidesScreen = ({ navigation, route }) => {
   };
 
   /**
-   * Get count for tabs
-   * Uses jobStats for counts like HomeScreen
-   * @param {string} tabId - Tab id
-   */
-  const getTabCount = (tabId) => {
-    switch(tabId){
-      case 'accepted': return jobStats?.accepted || 0;
-      case 'pickedup': return jobStats?.pickedup || 0;
-      case 'delivered': return jobStats?.delivered || 0;
-      case 'cancelled': return jobs.filter(job => mapApiStatusToTabStatus(job.status) === 'cancelled').length;
-      default: return 0;
-    }
-  };
-
-  /**
    * Get Filtered Jobs
-   * Filters jobs array based on selected tab
+   * Filters jobs array based on selected tab using jobStats to match HomeScreen counts
    */
   const getFilteredJobs = () => {
-    return jobs.filter(job => mapApiStatusToTabStatus(job.status) === activeTab);
+    // For accepted, pickedup, delivered, filter jobs based on jobStats ids
+    const tabToStatusMap = {
+      accepted: 'accepted',
+      pickedup: 'pickedup',
+      delivered: 'delivered',
+      cancelled: 'cancelled',
+    };
+
+    const status = tabToStatusMap[activeTab];
+
+    if (!status) return [];
+
+    // For cancelled, use jobs array directly
+    if (status === 'cancelled') {
+      return jobs.filter(job => mapApiStatusToTabStatus(job.status) === 'cancelled');
+    }
+
+    // For accepted, pickedup, delivered, filter jobs based on dashboard jobStats ids
+    const statusJobIds = jobStats[status + 'Jobs']?.map(job => job.id) || [];
+    return jobs.filter(job => statusJobIds.includes(job.id));
   };
 
   /**
@@ -190,7 +195,7 @@ const MyRidesScreen = ({ navigation, route }) => {
         styles.tabButtonText,
         activeTab === tab.id && styles.activeTabButtonText
       ]}>
-        {tab.label} ({getTabCount(tab.id)})
+        {tab.label} ({activeTab === tab.id ? getFilteredJobs().length : ''})
       </Text>
     </TouchableOpacity>
   );

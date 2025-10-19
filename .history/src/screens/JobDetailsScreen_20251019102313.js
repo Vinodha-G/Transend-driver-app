@@ -179,7 +179,7 @@ const JobDetailsScreen = ({ route }) => {
               <Text style={[styles.companyName, commonStyles.titleColor]}>
                 {customerName}   {/* Customer Name */}
               </Text>
-              {/* <Text style={styles.orderId}>Order ID: {orderId}</Text> */}
+              <Text style={styles.orderId}>Order ID: {orderId}</Text>
               <Text style={styles.trackingId}>Tracking ID: {trackingId}</Text>
             </View>
           </View>

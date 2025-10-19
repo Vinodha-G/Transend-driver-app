@@ -17,7 +17,7 @@
  * - Can be accessed from HomeScreen or CurrentJobScreen
  * 
  * Author: Driver App Team
- * Version: 1.2.0
+ * Version: 1.1.0
  */
 
 import React, { useState, useEffect } from 'react';
@@ -35,14 +35,14 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { colors, commonStyles } from '../styles/commonStyles';
 
-// Get device screen dimensions for responsive design
+// Get screen dimensions
 const { width, height } = Dimensions.get('window');
 
 const JobDetailsScreen = ({ route }) => {
-  // Extract job object from navigation route params
+  // Extract job data from route params
   const job = route?.params?.job ?? null;
 
-  // Show fallback message if job data is missing
+  // If job data is not provided, show fallback
   if (!job) {
     return (
       <SafeAreaView style={commonStyles.container}>
@@ -53,61 +53,42 @@ const JobDetailsScreen = ({ route }) => {
     );
   }
 
-  // Safely extract job details with fallback values
+  // Extract fields safely
   const orderId = job?.order_id ?? 'N/A';
   const trackingId = job?.tracking_id ?? 'N/A';
   const customerName = job?.customer_name ?? 'N/A';
   const fromAddress = job?.from_address ?? 'N/A';
   const toAddress = job?.to_address ?? 'N/A';
   const shipmentDate = job?.shipment_date ?? 'N/A';
-
-  // Booking details extraction with safety checks
   const bookingDetails = job?.booking_details ?? {};
   const variantSummary = bookingDetails?.variant_summary ?? 'N/A';
   const equipments = bookingDetails?.equipments ?? 'N/A';
   const totalWeight = bookingDetails?.total_weight ?? 'N/A';
 
-  /**
-   * Map State
-   * - userLocation: holds the current device location
-   * - mapRegion: defines the visible map region (latitude, longitude, zoom)
-   */
+  // Map state
   const [userLocation, setUserLocation] = useState(null);
   const [mapRegion, setMapRegion] = useState({
-    latitude: 43.6532, // Default to Toronto coordinates if location unavailable
+    latitude: 43.6532, // default
     longitude: -79.3832,
-    latitudeDelta: 0.0922, // Controls vertical zoom
-    longitudeDelta: 0.0421, // Controls horizontal zoom
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
   });
 
-  // Fetch user's current location when component mounts
+  // Fetch user location on mount
   useEffect(() => {
     getCurrentLocation();
   }, []);
 
-  /**
-   * getCurrentLocation - Requests location permission and fetches device coordinates
-   * Updates userLocation state and mapRegion to center map on the user
-   */
+  // Get current device location
   const getCurrentLocation = async () => {
     try {
-      // Ask for foreground location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
-
-      // If permission denied, show alert and return
       if (status !== 'granted') {
-        Alert.alert(
-          'Permission denied',
-          'Location permission is required to show map.'
-        );
+        Alert.alert('Permission denied', 'Location permission is required to show map.');
         return;
       }
-
-      // Get current position
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-
-      // Update userLocation for marker and mapRegion for centering
       setUserLocation({ latitude, longitude });
       setMapRegion({
         latitude,
@@ -124,52 +105,50 @@ const JobDetailsScreen = ({ route }) => {
     <SafeAreaView style={commonStyles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
 
-        {/* ================= Map Section ================= */}
+        {/* Map Section */}
         <View style={styles.mapContainer}>
           <MapView
-            provider={PROVIDER_GOOGLE}     // Use Google Maps provider
-            style={styles.map}              // Full container size
-            region={mapRegion}              // Center map on this region
-            showsUserLocation={true}        // Show user's location on map
-            showsMyLocationButton={true}    // Button to center on user location
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            region={mapRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
           >
-            {/* ---------------- User Marker ---------------- */}
+            {/* User Location Marker */}
             {userLocation && (
               <Marker
                 coordinate={userLocation}
                 title="Your Location"
-                pinColor={colors.themeColor} // Use theme color for user
+                pinColor={colors.themeColor}
               />
             )}
 
-            {/* ---------------- Pickup Marker ---------------- */}
+            {/* Pickup Location Marker */}
             <Marker
               coordinate={{
-                latitude: mapRegion.latitude + 0.01, // Demo offset; can replace with geocoded pickup coords
+                latitude: mapRegion.latitude + 0.01, // demo offset
                 longitude: mapRegion.longitude + 0.01,
               }}
               title="Pickup Location"
-              description={fromAddress}   // Shows full from_address on marker
-              pinColor={colors.danger}   // Red color for pickup
+              description={fromAddress}
+              pinColor={colors.danger}
             />
 
-            {/* ---------------- Dropoff Marker ---------------- */}
+            {/* Dropoff Location Marker */}
             <Marker
               coordinate={{
-                latitude: mapRegion.latitude - 0.01, // Demo offset; replace with geocoded dropoff coords
+                latitude: mapRegion.latitude - 0.01, // demo offset
                 longitude: mapRegion.longitude - 0.01,
               }}
               title="Dropoff Location"
-              description={toAddress}     // Shows full to_address on marker
-              pinColor={colors.success}   // Green color for dropoff
+              description={toAddress}
+              pinColor={colors.success}
             />
           </MapView>
         </View>
 
-        {/* ================= Job Details Section ================= */}
+        {/* Job Details Section */}
         <View style={styles.section}>
-
-          {/* ---------------- Customer Info ---------------- */}
           <View style={styles.headerContainer}>
             <Image
               source={require('../../assets/images/profile/p1.png')}
@@ -177,14 +156,14 @@ const JobDetailsScreen = ({ route }) => {
             />
             <View>
               <Text style={[styles.companyName, commonStyles.titleColor]}>
-                {customerName}   {/* Customer Name */}
+                {customerName}
               </Text>
               {/* <Text style={styles.orderId}>Order ID: {orderId}</Text> */}
               <Text style={styles.trackingId}>Tracking ID: {trackingId}</Text>
             </View>
           </View>
 
-          {/* ---------------- Shipment Info ---------------- */}
+          {/* Shipment Details */}
           <View style={styles.detailRow}>
             <Text style={styles.label}>Shipment Date:</Text>
             <Text style={styles.value}>{shipmentDate}</Text>
@@ -199,23 +178,17 @@ const JobDetailsScreen = ({ route }) => {
           </View>
         </View>
 
-        {/* ================= Booking Details Section ================= */}
+        {/* Booking Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Booking Details</Text>
-
-          {/* Variant Summary */}
           <View style={styles.detailRow}>
             <Text style={styles.label}>Variant Summary:</Text>
             <Text style={styles.value}>{variantSummary}</Text>
           </View>
-
-          {/* Equipments */}
           <View style={styles.detailRow}>
             <Text style={styles.label}>Equipments:</Text>
             <Text style={styles.value}>{equipments}</Text>
           </View>
-
-          {/* Total Weight */}
           <View style={styles.detailRow}>
             <Text style={styles.label}>Total Weight:</Text>
             <Text style={styles.value}>{totalWeight}</Text>
@@ -227,15 +200,14 @@ const JobDetailsScreen = ({ route }) => {
   );
 };
 
-// ================= StyleSheet =================
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingBottom: 20, // Space at bottom for scrolling
+    paddingBottom: 20,
   },
 
   mapContainer: {
     width: width,
-    height: height * 0.35, // 35% of screen height
+    height: height * 0.35,
   },
 
   map: {
@@ -285,7 +257,7 @@ const styles = StyleSheet.create({
 
   detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // label on left, value on right
+    justifyContent: 'space-between',
     marginBottom: 6,
   },
 
@@ -297,7 +269,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 14,
     color: colors.titleColor,
-    flexShrink: 1,   // prevent overflow
+    flexShrink: 1,
     textAlign: 'right',
   },
 
