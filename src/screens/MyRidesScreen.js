@@ -2,33 +2,17 @@
  * MyRidesScreen.js - Job History and Status Management
  * 
  * Displays a filterable list of jobs organized by status with tab navigation.
- * Allows drivers to view their job history across different stages of completion.
- * Now updated to match HomeScreen counts and display corresponding job cards.
+ * For now, it uses FAKE job data generated based on jobStats counts.
  * 
  * Features:
  * - Horizontal tab navigation for job status filtering
- * - Real-time job list filtering based on active tab using jobStats
- * - Job cards displaying complete job information
- * - Empty state handling for each status category
- * - Navigation to detailed job views
- * - Responsive horizontal scrolling for tabs
+ * - Dynamically generates dummy jobs per status count
+ * - Job cards displayed vertically using FlatList
+ * - Empty state handling when count = 0
  * 
- * Tab Categories:
- * - Accepted: Jobs that have been accepted but not picked up
- * - PickedUp: Jobs that have been picked up and are in transit
- * - Delivered: Completed jobs that have been delivered
- * - Cancelled: Cancelled or unsuccessful jobs
- * 
- * Navigation:
- * - Accessed via bottom tab navigation (My Rides tab)
- * - Links to JobDetails screen for individual job views
- * 
- * Data Sources:
- * - Global app context for jobs array and jobStats
- * - Real-time filtering based on job status
- * 
- * @author Driver App Team
- * @version 1.3.0
+ * @author
+ * Driver App Team (Modified by Vinodha)
+ * @version 1.4.0 (Fake data for testing)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -40,142 +24,81 @@ import JobCard from '../components/common/JobCard';
 import { useApp } from '../context/AppContext';
 import { colors, commonStyles } from '../styles/commonStyles';
 
-/**
- * MyRidesScreen Component
- * 
- * Main job history screen with tabbed filtering by job status.
- * Provides comprehensive view of all driver's job activities.
- * Cards are now aligned with HomeScreen counts.
- * 
- * @param {Object} props - Component props
- * @param {Object} props.navigation - React Navigation object for screen navigation
- * @param {Object} props.route - React Navigation route object for params
- * @returns {JSX.Element} MyRidesScreen component
- */
 const MyRidesScreen = ({ navigation, route }) => {
-  // Get jobs data and jobStats from global context
-  const { user, jobs, jobStats, unreadNotifications } = useApp();
+  // ✅ Pull global context data
+  const { user, jobStats, unreadNotifications } = useApp();
 
-  // Local state for active tab selection
+  // ✅ Manage which tab is active
   const [activeTab, setActiveTab] = useState('accepted');
 
-  // Hamburger menu state
+  // ✅ Manage hamburger menu visibility
   const [menuVisible, setMenuVisible] = useState(false);
 
-  /**
-   * Update activeTab when initialTab param is passed from HomeScreen
-   * Ensures correct tab opens if screen is already mounted
-   */
+  // ✅ Update active tab if screen navigated with param (e.g. from Home)
   useEffect(() => {
     if (route.params?.initialTab) {
       setActiveTab(route.params.initialTab);
-
-      // Clear the param to prevent repeated updates on re-render
       navigation.setParams({ initialTab: undefined });
     }
   }, [route.params?.initialTab]);
 
-  /**
-   * Handle Menu Press
-   * Opens the hamburger menu
-   */
-  const handleMenuPress = () => {
-    setMenuVisible(true);
-  };
-
-  /**
-   * Handle Menu Close
-   * Closes the hamburger menu
-   */
-  const handleMenuClose = () => {
+  // ✅ Handle menu open/close/navigation
+  const handleMenuPress = () => setMenuVisible(true);
+  const handleMenuClose = () => setMenuVisible(false);
+  const handleMenuNavigation = (routeName) => {
     setMenuVisible(false);
+    navigation.navigate(routeName);
   };
 
-  /**
-   * Handle Menu Navigation
-   * Navigates to selected route from hamburger menu
-   * @param {string} route - Route to navigate to
-   */
-  const handleMenuNavigation = (route) => {
-    setMenuVisible(false);
-    navigation.navigate(route);
-  };
+  // ✅ Notification button handler
+  const handleNotificationPress = () => navigation.navigate('Notification');
 
-  /**
-   * Handle Notification Press
-   * Navigates to notifications screen
-   */
-  const handleNotificationPress = () => {
-    navigation.navigate('Notification');
-  };
+  // ✅ Job card click handler (for future use)
+  const handleJobPress = (job) => navigation.navigate('JobDetails', { job });
 
-  /**
-   * Handle Job Press
-   * Navigates to JobDetails screen with selected job object
-   * @param {Object} job - Selected job object
-   */
-  const handleJobPress = (job) => {
-    navigation.navigate('JobDetails', { job });
-  };
-
-  /**
-   * Tab Configuration
-   * Defines available tabs and labels
-   */
+  // ✅ Define available tabs
   const tabs = [
     { id: 'accepted', label: 'Accepted' },
     { id: 'pickedup', label: 'PickedUp' },
     { id: 'delivered', label: 'Delivered' },
-    { id: 'cancelled', label: 'Cancel' },
+    { id: 'cancelled', label: 'Cancelled' },
   ];
 
-  /**
-   * Map API Status to Tab Status
-   * Handles discrepancy between API and UI tab names
-   */
-  const mapApiStatusToTabStatus = (apiStatus) => {
-    const statusMap = {
-      'new': 'new',
-      'accepted': 'accepted',
-      'picked_up': 'pickedup',
-      'pickedup': 'pickedup',
-      'delivered': 'delivered',
-      'completed': 'delivered',
-      'cancelled': 'cancelled',
-      'canceled': 'cancelled',
-      'cancel': 'cancelled',
-    };
-    return statusMap[apiStatus?.toLowerCase()] || apiStatus;
-  };
-
-  /**
-   * Get count for tabs
-   * Uses jobStats for counts like HomeScreen
-   * @param {string} tabId - Tab id
-   */
+  // ✅ Get job count for each tab using jobStats
   const getTabCount = (tabId) => {
-    switch(tabId){
+    switch (tabId) {
       case 'accepted': return jobStats?.accepted || 0;
       case 'pickedup': return jobStats?.pickedup || 0;
       case 'delivered': return jobStats?.delivered || 0;
-      case 'cancelled': return jobs.filter(job => mapApiStatusToTabStatus(job.status) === 'cancelled').length;
+      case 'cancelled': return jobStats?.cancelled || 0;
       default: return 0;
     }
   };
 
-  /**
-   * Get Filtered Jobs
-   * Filters jobs array based on selected tab
-   */
+  // ✅ Generate FAKE jobs array based on count
   const getFilteredJobs = () => {
-    return jobs.filter(job => mapApiStatusToTabStatus(job.status) === activeTab);
+    const count = getTabCount(activeTab); // number of fake cards to show
+
+    // 🔹 Create fake job objects dynamically
+    return Array.from({ length: count }, (_, index) => ({
+      id: `${activeTab}-${index + 1}`,
+      status: activeTab,
+      title: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Job #${index + 1}`,
+      pickup: `Pickup Location ${index + 1}`,
+      drop: `Drop Location ${index + 1}`,
+      date: 'Today',
+    }));
   };
 
-  /**
-   * Render Tab Button
-   * @param {Object} tab - Tab configuration
-   * @returns {JSX.Element} TouchableOpacity
-   */
+  // ✅ Render each fake job as a card
+  const renderJobItem = ({ item }) => (
+    <JobCard
+      job={item}
+      onPress={() => handleJobPress(item)}
+    />
+  );
+
+  // ✅ Render each tab button
   const renderTabButton = (tab) => (
     <TouchableOpacity
       key={tab.id}
@@ -195,29 +118,16 @@ const MyRidesScreen = ({ navigation, route }) => {
     </TouchableOpacity>
   );
 
-  /**
-   * Render Job Item
-   * @param {Object} param - Render item parameters
-   * @param {Object} param.item - Job object
-   * @returns {JSX.Element} JobCard
-   */
-  const renderJobItem = ({ item }) => (
-    <JobCard
-      job={item}
-      onPress={() => handleJobPress(item)}
-    />
-  );
-
   return (
     <SafeAreaView style={commonStyles.container}>
-      {/* Header with menu, logo, and notifications */}
+      {/* 🔹 Top Header with Menu + Notification */}
       <Header
         onMenuPress={handleMenuPress}
         onNotificationPress={handleNotificationPress}
         showNotificationBadge={unreadNotifications > 0}
       />
 
-      {/* Tab Navigation Section */}
+      {/* 🔹 Horizontal Tab Navigation */}
       <View style={styles.tabContainer}>
         <ScrollView
           horizontal
@@ -228,12 +138,12 @@ const MyRidesScreen = ({ navigation, route }) => {
         </ScrollView>
       </View>
 
-      {/* Tab Content Section */}
+      {/* 🔹 Main Content Area */}
       <View style={[commonStyles.customContainer, styles.contentContainer]}>
         <FlatList
-          data={getFilteredJobs()}
+          data={getFilteredJobs()} // Fake jobs shown here
           renderItem={renderJobItem}
-          keyExtractor={(item) => (item.id || Math.random()).toString()}
+          keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -245,7 +155,7 @@ const MyRidesScreen = ({ navigation, route }) => {
         />
       </View>
 
-      {/* Hamburger Menu */}
+      {/* 🔹 Hamburger Menu Drawer */}
       <HamburgerMenu
         visible={menuVisible}
         onClose={handleMenuClose}
@@ -257,7 +167,7 @@ const MyRidesScreen = ({ navigation, route }) => {
 };
 
 /**
- * Component-Specific Styles
+ * Component Styles
  */
 const styles = StyleSheet.create({
   tabContainer: {
