@@ -20,75 +20,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Appearance } from 'react-native';
+import { Appearance, useColorScheme } from 'react-native';
+import { lightTheme, darkTheme, THEME_STORAGE_KEY, THEME_MODE } from '../utils/theme';
 
-/**
- * Light Theme Colors
- * Clean, bright colors for light mode
- */
-export const lightTheme = {
-  // Primary Colors
-  primary: '#00897B',              // Teal green (header, accent)
-  primaryDark: '#00695C',          // Darker teal for pressed states
-  secondary: '#ffb400',            // Orange accent
-  
-  // Background Colors
-  background: '#FFFFFF',           // Main background
-  surface: '#F5F5F5',             // Card/container background
-  header: '#00897B',              // Header background
-  
-  // Text Colors
-  text: '#1f1f1f',                // Primary text (dark)
-  textSecondary: '#8f8f8f',       // Secondary text (medium gray)
-  textLight: '#FFFFFF',           // Light text for dark backgrounds
-  
-  // UI Colors
-  border: '#E0E0E0',              // Borders and dividers
-  success: '#20b149',             // Success states
-  error: '#ff4b4b',               // Error states
-  warning: '#ffb400',             // Warning states
-  
-  // Interactive Colors
-  tabActive: '#00897B',           // Active tab color
-  tabInactive: '#8f8f8f',         // Inactive tab color
-  
-  // Status Bar
-  statusBar: 'dark-content',      // Dark text on light background
-};
-
-/**
- * Dark Theme Colors
- * Dark, comfortable colors for dark mode
- */
-export const darkTheme = {
-  // Primary Colors
-  primary: '#00ACC1',              // Lighter teal for dark mode
-  primaryDark: '#0097A7',          // Darker variant
-  secondary: '#FFC107',            // Amber accent
-  
-  // Background Colors
-  background: '#121212',           // Main dark background
-  surface: '#1E1E1E',             // Card/container background
-  header: '#1F1F1F',              // Header background (slightly lighter)
-  
-  // Text Colors
-  text: '#E0E0E0',                // Primary text (light)
-  textSecondary: '#A0A0A0',       // Secondary text (medium light)
-  textLight: '#FFFFFF',           // Light text
-  
-  // UI Colors
-  border: '#333333',              // Borders and dividers
-  success: '#4CAF50',             // Success states
-  error: '#F44336',               // Error states
-  warning: '#FF9800',             // Warning states
-  
-  // Interactive Colors
-  tabActive: '#00ACC1',           // Active tab color
-  tabInactive: '#A0A0A0',         // Inactive tab color
-  
-  // Status Bar
-  statusBar: 'light-content',     // Light text on dark background
-};
+// Re-export themes for backward compatibility
+export { lightTheme, darkTheme };
 
 /**
  * Theme Context
@@ -98,13 +34,17 @@ const ThemeContext = createContext();
 /**
  * Theme Provider Component
  * 
- * Manages theme state and provides theme switching functionality
+ * Manages theme state and provides theme switching functionality.
+ * Supports system theme detection and persistent storage.
  * 
  * @param {Object} children - Child components
  */
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Use system color scheme as initial value
+  const systemColorScheme = useColorScheme();
+  const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
   const [isLoading, setIsLoading] = useState(true);
+  const [themeMode, setThemeMode] = useState(THEME_MODE.SYSTEM); // 'light', 'dark', or 'system'
 
   /**
    * Load saved theme preference on app start
@@ -114,22 +54,54 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   /**
+   * Listen to system theme changes when in system mode
+   */
+  useEffect(() => {
+    if (themeMode === THEME_MODE.SYSTEM) {
+      const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+        setIsDarkMode(colorScheme === 'dark');
+      });
+      return () => subscription?.remove();
+    }
+  }, [themeMode]);
+
+  /**
    * Load theme preference from AsyncStorage
    */
   const loadThemePreference = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('@theme_preference');
+      const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
       if (savedTheme !== null) {
-        setIsDarkMode(savedTheme === 'dark');
+        // Support both old format ('dark'/'light') and new format with mode
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          setThemeMode(savedTheme);
+          setIsDarkMode(savedTheme === 'dark');
+        } else {
+          // Try to parse as JSON for future format
+          try {
+            const parsed = JSON.parse(savedTheme);
+            setThemeMode(parsed.mode || THEME_MODE.SYSTEM);
+            if (parsed.mode === THEME_MODE.SYSTEM) {
+              setIsDarkMode(systemColorScheme === 'dark');
+            } else {
+              setIsDarkMode(parsed.mode === THEME_MODE.DARK);
+            }
+          } catch {
+            // Fallback to system if parse fails
+            setThemeMode(THEME_MODE.SYSTEM);
+            setIsDarkMode(systemColorScheme === 'dark');
+          }
+        }
       } else {
         // If no saved preference, use system preference
-        const colorScheme = Appearance.getColorScheme();
-        setIsDarkMode(colorScheme === 'dark');
+        setThemeMode(THEME_MODE.SYSTEM);
+        setIsDarkMode(systemColorScheme === 'dark');
       }
     } catch (error) {
       console.error('Error loading theme preference:', error);
-      // Default to light mode if error
-      setIsDarkMode(false);
+      // Default to system preference if error
+      setThemeMode(THEME_MODE.SYSTEM);
+      setIsDarkMode(systemColorScheme === 'dark');
     } finally {
       setIsLoading(false);
     }
@@ -140,11 +112,34 @@ export const ThemeProvider = ({ children }) => {
    */
   const toggleTheme = async () => {
     try {
-      const newTheme = !isDarkMode;
-      setIsDarkMode(newTheme);
+      const newDarkMode = !isDarkMode;
+      setIsDarkMode(newDarkMode);
+      setThemeMode(newDarkMode ? THEME_MODE.DARK : THEME_MODE.LIGHT);
       
       // Save preference to AsyncStorage
-      await AsyncStorage.setItem('@theme_preference', newTheme ? 'dark' : 'light');
+      await AsyncStorage.setItem(THEME_STORAGE_KEY, newDarkMode ? THEME_MODE.DARK : THEME_MODE.LIGHT);
+    } catch (error) {
+      console.error('Error saving theme preference:', error);
+    }
+  };
+
+  /**
+   * Set theme mode explicitly
+   * 
+   * @param {string} mode - 'light', 'dark', or 'system'
+   */
+  const setTheme = async (mode) => {
+    try {
+      setThemeMode(mode);
+      
+      if (mode === THEME_MODE.SYSTEM) {
+        setIsDarkMode(systemColorScheme === 'dark');
+      } else {
+        setIsDarkMode(mode === THEME_MODE.DARK);
+      }
+      
+      // Save preference to AsyncStorage
+      await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch (error) {
       console.error('Error saving theme preference:', error);
     }
@@ -161,7 +156,9 @@ export const ThemeProvider = ({ children }) => {
   const value = {
     isDarkMode,
     theme,
+    themeMode,
     toggleTheme,
+    setTheme,
     isLoading,
   };
 

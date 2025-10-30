@@ -31,9 +31,11 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, commonStyles } from '../../styles/commonStyles';
+import { useTheme } from '../../context/ThemeContext';
+import { commonStyles } from '../../styles/commonStyles';
+import { spacing, componentSizes } from '../../utils/responsiveDimensions';
 
 /**
  * StatsCard Component
@@ -48,23 +50,25 @@ import { colors, commonStyles } from '../../styles/commonStyles';
  * @returns {JSX.Element} StatsCard component
  */
 const StatsCard = ({ count, title, onPress, iconName = "car" }) => {
+  const { theme } = useTheme();
+  
   return (
     <TouchableOpacity 
-      style={styles.rideBox} 
+      style={[styles.rideBox, { backgroundColor: theme.surface }]} 
       onPress={onPress}
-      activeOpacity={0.7}                  // Visual feedback on press
+      activeOpacity={0.7}
     >
       {/* Top Row: Count and Icon */}
       <View style={[commonStyles.flexSpacing, commonStyles.gap1]}>
         {/* Large Count Display */}
-        <Text style={styles.countText}>{count}</Text>
+        <Text style={[styles.countText, { color: theme.text }]}>{count}</Text>
         
         {/* Associated Icon */}
-        <View style={styles.rideIcon}>
+        <View style={[styles.rideIcon, { backgroundColor: theme.background }]}>
           <Ionicons 
             name={iconName} 
             size={24} 
-            color={colors.themeColor}       // Theme color for consistency
+            color={theme.primary}
           />
         </View>
       </View>
@@ -72,13 +76,13 @@ const StatsCard = ({ count, title, onPress, iconName = "car" }) => {
       {/* Bottom Row: Title and Navigation Arrow */}
       <View style={[commonStyles.flexSpacing, commonStyles.gap1, commonStyles.mt1]}>
         {/* Statistic Title */}
-        <Text style={[styles.titleText, commonStyles.titleColor]}>{title}</Text>
+        <Text style={[styles.titleText, { color: theme.text }]}>{title}</Text>
         
         {/* Navigation Arrow */}
         <Ionicons 
           name="chevron-forward" 
           size={16} 
-          color={colors.textLight}          // Light color for subtle arrow
+          color={theme.textSecondary}
         />
       </View>
     </TouchableOpacity>
@@ -95,42 +99,42 @@ const styles = StyleSheet.create({
   /**
    * Main Card Container
    * Card-style container with shadow and responsive sizing
+   * Note: backgroundColor applied dynamically via theme
    */
   rideBox: {
-    backgroundColor: colors.white,          // White background
-    borderRadius: 12,                      // Rounded corners
-    padding: 16,                           // Internal padding
+    borderRadius: componentSizes.cardBorderRadius,  // Responsive border radius
+    padding: spacing.md,                    // Responsive internal padding
     flex: 1,                               // Flexible sizing for grid layout
-    marginHorizontal: 4,                   // Horizontal spacing between cards
-    shadowColor: colors.black,             // Shadow color
+    marginHorizontal: spacing.xs,         // Responsive horizontal spacing between cards
+    shadowColor: '#000',                   // Shadow color
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,                    // Light shadow
     shadowRadius: 4,
-    elevation: 3,                          // Android shadow
+    elevation: Platform.OS === 'android' ? componentSizes.cardElevation : 0, // Android shadow
   },
   
   /**
    * Count Text Styling
    * Large, bold number display for the main statistic
+   * Note: color applied dynamically via theme
    */
   countText: {
     fontSize: 24,                          // Large font size for prominence
     fontWeight: 'bold',                    // Bold weight for emphasis
-    color: colors.titleColor,              // Dark color for contrast
   },
   
   /**
    * Icon Container
    * Circular container for the statistic icon
+   * Note: backgroundColor applied dynamically via theme
    */
   rideIcon: {
     width: 40,                             // Fixed width
     height: 40,                            // Fixed height (square)
     borderRadius: 20,                      // Make circular
-    backgroundColor: colors.light,         // Light background
     justifyContent: 'center',              // Center icon vertically
     alignItems: 'center',                  // Center icon horizontally
   },
@@ -138,6 +142,7 @@ const styles = StyleSheet.create({
   /**
    * Title Text Styling
    * Descriptive text for the statistic
+   * Note: color applied dynamically via theme
    */
   titleText: {
     fontSize: 14,                          // Medium text size

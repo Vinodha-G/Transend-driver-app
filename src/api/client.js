@@ -17,21 +17,23 @@
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 /**
  * Environment Configuration
  * 
  * Configure different API endpoints for various environments.
- * Change the current environment here to switch between dev/staging/prod.
+ * Uses environment variables from Constants with fallback to defaults.
  */
+
 const ENVIRONMENTS = {
-  development: 'https://devtrans.transend.ca/api',
-  staging: 'https://stagingapi.transend.ca/api',
-  production: 'https://api.transend.ca/api'
+  development: Constants.expoConfig?.extra?.apiBaseUrlDev || 'https://devtrans.transend.ca/api',
+  staging: Constants.expoConfig?.extra?.apiBaseUrlStaging || 'https://stagingapi.transend.ca/api',
+  production: Constants.expoConfig?.extra?.apiBaseUrlProd || 'https://api.transend.ca/api'
 };
 
-// Set current environment - change this for different builds
-const CURRENT_ENVIRONMENT = 'development';
+// Set current environment - uses Constants or defaults to development
+const CURRENT_ENVIRONMENT = Constants.expoConfig?.extra?.currentEnvironment || 'development';
 
 /**
  * API Client Instance
@@ -41,7 +43,7 @@ const CURRENT_ENVIRONMENT = 'development';
  */
 const apiClient = axios.create({
   baseURL: ENVIRONMENTS[CURRENT_ENVIRONMENT],
-  timeout: 30000, // 30 second timeout
+  timeout: 60000, // 60 second timeout (increased for slower networks)
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -119,6 +121,11 @@ apiClient.interceptors.request.use(
 
     // Add any additional headers needed by the API
     config.headers['X-Requested-With'] = 'XMLHttpRequest';
+    
+    // Don't set Content-Type for FormData - let browser set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
 
     // Log request in development
     if (__DEV__) {
@@ -214,6 +221,17 @@ apiClient.interceptors.response.use(
     } else if (error.request) {
       // Network error - no response received
       console.error('🌐 Network Error:', error.message);
+      
+      // Check if it's a timeout
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        return Promise.reject({
+          status: 0,
+          message: 'Request timeout. The server is taking too long to respond.',
+          data: null,
+          originalError: error,
+        });
+      }
+      
       return Promise.reject({
         status: 0,
         message: 'Network error. Please check your internet connection.',

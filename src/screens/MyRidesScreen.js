@@ -22,11 +22,16 @@ import Header from '../components/common/Header';
 import HamburgerMenu from '../components/common/HamburgerMenu';
 import JobCard from '../components/common/JobCard';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
+import { spacing } from '../utils/responsiveDimensions';
 
 const MyRidesScreen = ({ navigation, route }) => {
+  // ✅ Get theme
+  const { theme } = useTheme();
+  
   // ✅ Pull global context data
-  const { user, jobStats, unreadNotifications } = useApp();
+  const { user, jobs, jobStats, unreadNotifications } = useApp();
 
   // ✅ Manage which tab is active
   const [activeTab, setActiveTab] = useState('accepted');
@@ -64,39 +69,47 @@ const MyRidesScreen = ({ navigation, route }) => {
     { id: 'cancelled', label: 'Cancelled' },
   ];
 
-  // ✅ Get job count for each tab using jobStats
-  const getTabCount = (tabId) => {
-    switch (tabId) {
-      case 'accepted': return jobStats?.accepted || 0;
-      case 'pickedup': return jobStats?.pickedup || 0;
-      case 'delivered': return jobStats?.delivered || 0;
-      case 'cancelled': return jobStats?.cancelled || 0;
-      default: return 0;
-    }
-  };
-
-  // ✅ Generate FAKE jobs array based on count
+  // ✅ Get filtered jobs from real jobs array by status
   const getFilteredJobs = () => {
-    const count = getTabCount(activeTab); // number of fake cards to show
-
-    // 🔹 Create fake job objects dynamically
-    return Array.from({ length: count }, (_, index) => ({
-      id: `${activeTab}-${index + 1}`,
-      status: activeTab,
-      title: `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Job #${index + 1}`,
-      pickup: `Pickup Location ${index + 1}`,
-      drop: `Drop Location ${index + 1}`,
-      date: 'Today',
-    }));
+    // Map activeTab to job status
+    const statusMap = {
+      'accepted': 'accepted',
+      'pickedup': 'pickedup',
+      'delivered': 'delivered',
+      'cancelled': 'cancelled',
+    };
+    
+    const targetStatus = statusMap[activeTab] || activeTab;
+    
+    // Filter real jobs from context by status
+    return jobs.filter(job => {
+      const jobStatus = job.status?.toLowerCase();
+      return jobStatus === targetStatus.toLowerCase();
+    });
   };
 
-  // ✅ Render each fake job as a card
-  const renderJobItem = ({ item }) => (
-    <JobCard
-      job={item}
-      onPress={() => handleJobPress(item)}
-    />
-  );
+  // ✅ Render each job as a card with proper field mapping
+  const renderJobItem = ({ item }) => {
+    // Map API job fields to JobCard expected format
+    const mappedJob = {
+      id: item.id || item.tracking_id || Math.random().toString(),
+      companyName: item.customer_name || item.companyName || 'Unknown Company',
+      orderId: item.tracking_id || item.order_id || item.orderId || 'N/A',
+      type: item.type || 'LTL',
+      dateTime: item.shipment_date || item.dateTime || 'TBD',
+      pickupLocation: item.from_address_text || item.from_address || item.pickupLocation || 'TBD',
+      dropoffLocation: item.to_address_text || item.to_address || item.dropoffLocation || 'TBD',
+      profileImage: item.profileImage || null,
+      status: item.status || 'new',
+    };
+    
+    return (
+      <JobCard
+        job={mappedJob}
+        onPress={() => handleJobPress(mappedJob)}
+      />
+    );
+  };
 
   // ✅ Render each tab button
   const renderTabButton = (tab) => (
@@ -113,7 +126,7 @@ const MyRidesScreen = ({ navigation, route }) => {
         styles.tabButtonText,
         activeTab === tab.id && styles.activeTabButtonText
       ]}>
-        {tab.label} ({getTabCount(tab.id)})
+        {tab.label} ({getFilteredJobs().length})
       </Text>
     </TouchableOpacity>
   );
@@ -128,7 +141,7 @@ const MyRidesScreen = ({ navigation, route }) => {
       />
 
       {/* 🔹 Horizontal Tab Navigation */}
-      <View style={styles.tabContainer}>
+      <View style={[styles.tabContainer, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -141,13 +154,15 @@ const MyRidesScreen = ({ navigation, route }) => {
       {/* 🔹 Main Content Area */}
       <View style={[commonStyles.customContainer, styles.contentContainer]}>
         <FlatList
-          data={getFilteredJobs()} // Fake jobs shown here
+          data={getFilteredJobs()}
           renderItem={renderJobItem}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || item.tracking_id || Math.random()).toString()}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 No {activeTab} rides found
               </Text>
             </View>
@@ -170,49 +185,51 @@ const MyRidesScreen = ({ navigation, route }) => {
  * Component Styles
  */
 const styles = StyleSheet.create({
+  // Note: backgroundColor and borderBottomColor applied dynamically via theme
   tabContainer: {
-    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   tabScrollView: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
+  // Note: backgroundColor, borderColor, and text color applied dynamically via theme
   tabButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginRight: 8,
+    paddingVertical: spacing.sm + 4,      // 12px
+    paddingHorizontal: spacing.md + 4,     // 20px
+    marginRight: spacing.sm,               // 8px
     borderRadius: 20,
-    backgroundColor: colors.light,
     borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 44,                         // Android touch target
   },
   activeTabButton: {
-    backgroundColor: colors.themeColor,
-    borderColor: colors.themeColor,
+    // Styles applied dynamically
   },
+  // Note: color applied dynamically via theme
   tabButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.textLight,
   },
   activeTabButtonText: {
-    color: colors.white,
+    // color applied dynamically
   },
   contentContainer: {
     flex: 1,
-    paddingTop: 16,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  listContent: {
+    paddingBottom: spacing.lg,             // Bottom padding for better scrolling
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: spacing.xl + 28,     // Responsive vertical padding (60px)
   },
+  // Note: color applied dynamically via theme
   emptyText: {
     fontSize: 16,
-    color: colors.textLight,
     textAlign: 'center',
   },
 });

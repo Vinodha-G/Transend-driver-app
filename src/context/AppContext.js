@@ -685,9 +685,12 @@ export const AppProvider = ({ children }) => {
         
         if (isAuthenticated) {
           console.log('User authenticated, loading data...');
-          await loadDriverProfile();
-          await loadDashboardData();
-          await loadDriverDocuments();
+          // Load data in parallel for better performance
+          await Promise.all([
+            loadDriverProfile().catch(err => console.error('Profile load error:', err)),
+            loadDashboardData().catch(err => console.error('Dashboard load error:', err)),
+            loadDriverDocuments().catch(err => console.error('Documents load error:', err)),
+          ]);
         } else {
           console.log('Authentication failed');
           setErrorState('profile', 'Authentication failed. Please check your connection.');
@@ -699,7 +702,7 @@ export const AppProvider = ({ children }) => {
     };
 
     initializeApp();
-  }, []);
+  }, []); // Empty dependency array - only run on mount
 
   /**
    * Context Value Object
@@ -747,6 +750,7 @@ export const AppProvider = ({ children }) => {
       accepted: dashboardData?.counts?.accepted || 0,          // Accepted jobs from API
       pickedup: dashboardData?.counts?.picked_up || 0,         // Picked up jobs from API
       delivered: dashboardData?.counts?.delivered || 0,        // Delivered jobs from API
+      cancelled: dashboardData?.counts?.cancelled || 0,        // Cancelled jobs from API
     },
     
     // Helper functions

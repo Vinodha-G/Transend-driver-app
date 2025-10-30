@@ -36,7 +36,9 @@ import HamburgerMenu from '../components/common/HamburgerMenu';
 import StatsCard from '../components/common/StatsCard';
 import JobCard from '../components/common/JobCard';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
+import { spacing } from '../utils/responsiveDimensions';
 
 /**
  * HomeScreen Component
@@ -50,8 +52,11 @@ import { colors, commonStyles } from '../styles/commonStyles';
  * @returns {JSX.Element} HomeScreen component
  */
 const HomeScreen = ({ navigation }) => {
+  // Get theme
+  const { theme } = useTheme();
+  
   // Get app data and functions from global context
-   const scrollViewRef = useRef(null);
+  const scrollViewRef = useRef(null);
   const jobsSectionRef = useRef(null);
   const jobsSectionY = useRef(0);
   const {
@@ -83,7 +88,8 @@ const HomeScreen = ({ navigation }) => {
     });
 
     return unsubscribe;
-  }, [navigation, loadDashboardData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]); // loadDashboardData is stable from context
 
   /**
    * Tab Press Effect
@@ -294,24 +300,30 @@ const HomeScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={commonStyles.container}>
+    <SafeAreaView 
+      style={[commonStyles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+    >
       {/* Header with menu, logo, and notifications */}
       <Header
         onMenuPress={handleMenuPress}
         onNotificationPress={handleNotificationPress}
-        showNotificationBadge={unreadNotifications > 0}  // Show badge if unread notifications exist
+        showNotificationBadge={unreadNotifications > 0}
       />
       
       {/* Main content area with scrollable sections and pull-to-refresh */}
       <ScrollView 
-      ref={scrollViewRef}  
+        ref={scrollViewRef}  
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={isLoading('dashboard')}
             onRefresh={handleRefresh}
-            colors={[colors.themeColor]}
-            tintColor={colors.themeColor}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
       >
@@ -334,17 +346,17 @@ const HomeScreen = ({ navigation }) => {
   onLayout={(event) => {
     jobsSectionY.current = event.nativeEvent.layout.y; // Save Y position when layout is ready
   }}
-  style={[commonStyles.customContainer, styles.jobsSection]}
->
-          <Text style={styles.sectionTitle}>New Job's</Text>
+          style={[commonStyles.customContainer, styles.jobsSection]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>New Job's</Text>
           <FlatList
             data={newJobs}
             renderItem={renderJobItem}
             keyExtractor={(item) => (item.id || Math.random()).toString()}
-            scrollEnabled={false}                        // Disable scroll (parent ScrollView handles it)
+            scrollEnabled={false}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={                         // Show when no jobs available
-              <Text style={styles.emptyText}>No new jobs available</Text>
+            ListEmptyComponent={
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No new jobs available</Text>
             }
           />
         </View>
@@ -376,11 +388,20 @@ const styles = StyleSheet.create({
   },
   
   /**
+   * Scroll Content Container
+   * Prevents content from being cut off and ensures proper padding
+   */
+  scrollContent: {
+    flexGrow: 1,                           // Allow content to grow
+    paddingBottom: spacing.lg,             // Bottom padding for better scrolling
+  },
+  
+  /**
    * Statistics Section Container
    * Top section containing job statistics cards
    */
   statsSection: {
-    paddingTop: 16,                        // Top spacing from header
+    paddingTop: spacing.md,                // Responsive top spacing from header
   },
   
   /**
@@ -388,7 +409,7 @@ const styles = StyleSheet.create({
    * Grid container for statistics cards
    */
   statsGrid: {
-    gap: 8,                                // Spacing between grid items
+    gap: spacing.sm,                      // Responsive spacing between grid items
   },
   
   /**
@@ -397,7 +418,7 @@ const styles = StyleSheet.create({
    */
   statsRow: {
     justifyContent: 'space-between',       // Equal spacing between columns
-    marginBottom: 8,                       // Bottom spacing between rows
+    marginBottom: spacing.sm,              // Responsive bottom spacing between rows
   },
   
   /**
@@ -405,29 +426,29 @@ const styles = StyleSheet.create({
    * Section containing new available jobs list
    */
   jobsSection: {
-    paddingTop: 24,                        // Spacing from stats section
+    paddingTop: spacing.lg,                // Responsive spacing from stats section
   },
   
   /**
    * Section Title
    * Header text for the jobs section
+   * Note: color applied dynamically via theme
    */
   sectionTitle: {
     fontSize: 20,                          // Large title text
     fontWeight: 'bold',                    // Bold font weight
-    color: colors.titleColor,              // Dark color for visibility
-    marginBottom: 16,                      // Bottom spacing before job list
+    marginBottom: spacing.md,              // Responsive bottom spacing before job list
   },
   
   /**
    * Empty State Text
    * Message shown when no new jobs are available
+   * Note: color applied dynamically via theme
    */
   emptyText: {
     textAlign: 'center',                   // Center align text
-    color: colors.textLight,               // Light gray color
     fontSize: 16,                          // Medium text size
-    paddingVertical: 32,                   // Vertical padding for spacing
+    paddingVertical: spacing.xl,           // Responsive vertical padding for spacing
   },
 });
 

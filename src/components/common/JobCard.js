@@ -28,9 +28,11 @@
  */
 
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, commonStyles } from '../../styles/commonStyles';
+import { useTheme } from '../../context/ThemeContext';
+import { commonStyles } from '../../styles/commonStyles';
+import { spacing, componentSizes } from '../../utils/responsiveDimensions';
 
 /**
  * JobCard Component
@@ -51,11 +53,12 @@ import { colors, commonStyles } from '../../styles/commonStyles';
  * @returns {JSX.Element} JobCard component
  */
 const JobCard = ({ job, onPress }) => {
+  const { theme } = useTheme();
   return (
     <TouchableOpacity 
-      style={styles.myRideBox} 
+      style={[styles.myRideBox, { backgroundColor: theme.surface }]} 
       onPress={onPress}
-      activeOpacity={0.7}                  // Visual feedback on press
+      activeOpacity={0.7}
     >
       {/* Job Header: Company info and order details */}
       <View style={styles.myRideHead}>
@@ -72,14 +75,13 @@ const JobCard = ({ job, onPress }) => {
         {/* Company and Order Information */}
         <View style={styles.myRideContent}>
           <View style={{ flexDirection: 'column' }}>
-  <Text style={[styles.companyName, commonStyles.titleColor, commonStyles.fwMedium]}>
-    {job.companyName}
-  </Text>
-  <Text style={[styles.orderId, commonStyles.themeColor, commonStyles.fwMedium]}>
-    Order Id : {job.orderId}
-  </Text>
-</View>
-
+            <Text style={[styles.companyName, { color: theme.text }, commonStyles.fwMedium]}>
+              {job.companyName}
+            </Text>
+            <Text style={[styles.orderId, { color: theme.primary }, commonStyles.fwMedium]}>
+              Order Id : {job.orderId}
+            </Text>
+          </View>
         </View>
       </View>
       
@@ -88,11 +90,11 @@ const JobCard = ({ job, onPress }) => {
         {/* Job Type and Date/Time */}
         <View style={styles.rideInfo}>
           {/* Job Type (LTL, FTL, etc.) */}
-          <Text style={[styles.ltlText, commonStyles.themeColor, commonStyles.fwBold]}>
+          <Text style={[styles.ltlText, { color: theme.primary }, commonStyles.fwBold]}>
             {job.type}
           </Text>
           {/* Scheduled Date and Time */}
-          <Text style={[styles.dateTime, commonStyles.titleColor, commonStyles.fwNormal]}>
+          <Text style={[styles.dateTime, { color: theme.text }, commonStyles.fwNormal]}>
             {job.dateTime}
           </Text>
         </View>
@@ -104,10 +106,10 @@ const JobCard = ({ job, onPress }) => {
             <Ionicons 
               name="location" 
               size={16} 
-              color={colors.danger}        // Red icon for pickup
+              color={theme.error}
               style={styles.locationIcon} 
             />
-            <Text style={[styles.locationText, commonStyles.textLight, commonStyles.fwLight]}>
+            <Text style={[styles.locationText, { color: theme.textSecondary }, commonStyles.fwLight]}>
               {job.pickupLocation}
             </Text>
           </View>
@@ -117,10 +119,10 @@ const JobCard = ({ job, onPress }) => {
             <Ionicons 
               name="navigate" 
               size={16} 
-              color={colors.success}       // Green icon for destination
+              color={theme.success}
               style={styles.locationIcon} 
             />
-            <Text style={[styles.locationText, commonStyles.textLight, commonStyles.fwLight]}>
+            <Text style={[styles.locationText, { color: theme.textSecondary }, commonStyles.fwLight]}>
               {job.dropoffLocation}
             </Text>
           </View>
@@ -140,20 +142,20 @@ const styles = StyleSheet.create({
   /**
    * Main Card Container
    * Outer container with card styling and shadow
+   * Note: backgroundColor applied dynamically via theme
    */
   myRideBox: {
-    backgroundColor: colors.white,          // White background
-    borderRadius: 12,                      // Rounded corners
-    padding: 16,                           // Internal padding
-    marginBottom: 12,                      // Bottom spacing between cards
-    shadowColor: colors.black,             // Shadow color
+    borderRadius: componentSizes.cardBorderRadius,  // Responsive border radius
+    padding: spacing.md,                    // Responsive internal padding
+    marginBottom: spacing.sm + 4,          // Responsive bottom spacing between cards
+    shadowColor: '#000',                   // Shadow color
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,                    // Light shadow
     shadowRadius: 4,
-    elevation: 3,                          // Android shadow
+    elevation: Platform.OS === 'android' ? componentSizes.cardElevation : 0, // Android shadow
   },
   
   /**
@@ -163,7 +165,7 @@ const styles = StyleSheet.create({
   myRideHead: {
     flexDirection: 'row',                  // Horizontal layout
     alignItems: 'center',                  // Center items vertically
-    marginBottom: 12,                      // Bottom spacing
+    marginBottom: spacing.sm + 4,         // Responsive bottom spacing
   },
   
   /**
@@ -171,7 +173,7 @@ const styles = StyleSheet.create({
    * Additional margin for company profile image
    */
   profileImg: {
-    marginRight: 12,                       // Right spacing from text content
+    marginRight: spacing.sm + 4,          // Responsive right spacing from text content
   },
   
   /**
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
    * Container for job type and date/time
    */
   rideInfo: {
-    marginBottom: 12,                      // Bottom spacing before locations
+    marginBottom: spacing.sm + 4,         // Responsive bottom spacing before locations
   },
   
   /**
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
    */
   ltlText: {
     fontSize: 16,                          // Medium text size
-    marginBottom: 4,                       // Bottom spacing
+    marginBottom: spacing.xs,             // Responsive bottom spacing
   },
   
   /**
@@ -236,7 +238,7 @@ const styles = StyleSheet.create({
    * Container for pickup and dropoff locations
    */
   rideLocationListing: {
-    gap: 8,                                // Spacing between location items
+    gap: spacing.sm,                      // Responsive spacing between location items
   },
   
   /**
@@ -254,7 +256,7 @@ const styles = StyleSheet.create({
    * Spacing for pickup/dropoff icons
    */
   locationIcon: {
-    marginRight: 8,                        // Right spacing from text
+    marginRight: spacing.sm,               // Responsive right spacing from text
   },
   
   /**

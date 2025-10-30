@@ -131,7 +131,8 @@ const DocumentsScreen = ({ navigation }) => {
     });
 
     return unsubscribe;
-  }, [navigation, loadDriverDocuments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]); // loadDriverDocuments is stable from context
 
   /**
    * Handle Document Upload
@@ -165,11 +166,12 @@ const DocumentsScreen = ({ navigation }) => {
         return;
       }
 
-      // Prepare file for upload
+      // Prepare file for upload - Format for FormData
+      // For React Native, FormData expects an object with uri, type, and name
       const documentFiles = {
         [documentType]: {
           uri: file.uri,
-          type: file.mimeType || 'application/octet-stream',
+          type: file.mimeType || 'application/pdf',
           name: file.name || `document.${file.uri.split('.').pop()}`,
         },
       };

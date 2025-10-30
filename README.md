@@ -338,17 +338,35 @@ expo upload:ios
 ## 🔧 **Configuration**
 
 ### **Environment Variables**
-Create `.env` file in root directory:
-```env
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-API_BASE_URL=https://your-api-domain.com/api
+
+Expo uses `app.json` for configuration. The `extra` section contains environment-specific values:
+
+```json
+{
+  "expo": {
+    "extra": {
+      "apiBaseUrlDev": "https://devtrans.transend.ca/api",
+      "apiBaseUrlStaging": "https://stagingapi.transend.ca/api",
+      "apiBaseUrlProd": "https://api.transend.ca/api",
+      "currentEnvironment": "development",
+      "oauthBaseUrl": "https://devtrans.transend.ca",
+      "oauthClientId": "3",
+      "oauthClientSecret": "your_client_secret",
+      "defaultUsername": "driver@transend.ca",
+      "defaultPassword": "driver@123"
+    }
+  }
+}
 ```
+
+**Note:** For production builds, use EAS Secrets or environment-specific `app.json` files to avoid committing credentials.
 
 ### **App Configuration** (`app.json`)
 - App name, version, and metadata
 - Platform-specific settings
 - Permission requirements
 - Asset and icon configuration
+- Environment variables in `extra` section
 
 ---
 

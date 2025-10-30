@@ -8,9 +8,14 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import Constants from 'expo-constants';
+
 // Create separate client for auth endpoints (no /api prefix)
+// Uses environment variables with fallback to defaults
+const authBaseURL = Constants.expoConfig?.extra?.oauthBaseUrl || 'https://devtrans.transend.ca';
+
 const authClient = axios.create({
-  baseURL: 'https://devtrans.transend.ca',
+  baseURL: authBaseURL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -29,10 +34,10 @@ const STORAGE_KEYS = {
 };
 
 const AUTH_CONFIG = {
-  CLIENT_ID: '3',
-  CLIENT_SECRET: 'AB4am1uiyOlqxwfy87LeArGcvezXQe8um2TR2a31',
-  DEFAULT_USERNAME: 'driver@transend.ca',
-  DEFAULT_PASSWORD: 'driver@123',
+  CLIENT_ID: Constants.expoConfig?.extra?.oauthClientId || '3',
+  CLIENT_SECRET: Constants.expoConfig?.extra?.oauthClientSecret || 'AB4am1uiyOlqxwfy87LeArGcvezXQe8um2TR2a31',
+  DEFAULT_USERNAME: Constants.expoConfig?.extra?.defaultUsername || 'driver@transend.ca',
+  DEFAULT_PASSWORD: Constants.expoConfig?.extra?.defaultPassword || 'driver@123',
   SCOPE: '*',
 };
 

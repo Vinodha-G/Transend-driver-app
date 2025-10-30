@@ -23,7 +23,8 @@
  * @version 1.1.0
  */
 
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions, Platform } from 'react-native';
+import { spacing, componentSizes, androidAdjustments, responsive } from '../utils/responsiveDimensions';
 
 // Get device dimensions for responsive design
 const { width, height } = Dimensions.get('window');
@@ -72,10 +73,13 @@ export const colors = {
   
   // Text Hierarchy
   textLight: '#8f8f8f',                  // Same as content color
+  textDark: '#1f1f1f',                   // Same as title color (for ErrorBoundary/NetworkStatus)
+  textSecondary: '#8f8f8f',              // Same as content color (secondary text)
   
   // UI Element Colors
   border: '#e9e9e9',                     // Same as line color
-  background: '#f5f5f5'                  // Same as box background
+  background: '#f5f5f5',                 // Same as box background
+  lightBackground: '#f5f5f5'             // Alias for background (used in DocumentsScreen)
 };
 
 /**
@@ -104,26 +108,35 @@ export const commonStyles = StyleSheet.create({
   },
   
   /**
+   * Screen Container
+   * Alias for container (used in ErrorBoundary)
+   */
+  screenContainer: {
+    flex: 1,                             // Take full available space
+    backgroundColor: colors.background,   // Light gray background
+  },
+  
+  /**
    * Custom Container
-   * Container with standard padding for content areas
+   * Container with responsive padding for content areas
    */
   customContainer: {
-    paddingHorizontal: 16,               // 16px horizontal padding
-    paddingVertical: 8,                  // 8px vertical padding
+    paddingHorizontal: spacing.screenPadding,  // Responsive horizontal padding
+    paddingVertical: spacing.sm,              // 8px vertical padding
   },
   
   // === HEADER STYLES ===
   
   /**
    * App Header
-   * Modern thin header with fixed height and elevation
+   * Modern thin header with responsive height and elevation
    */
   header: {
     backgroundColor: '#00897B',              // Consistent modern teal color
-    height: 56,                              // Fixed height for modern look
-    paddingHorizontal: 16,                   // Horizontal padding
+    height: componentSizes.headerHeight,     // Responsive header height
+    paddingHorizontal: spacing.md,            // 16px horizontal padding
     justifyContent: 'center',                // Center content vertically
-    elevation: 4,                            // Android shadow
+    elevation: Platform.OS === 'android' ? androidAdjustments.elevation.medium : 0, // Android shadow
     shadowColor: '#000',                     // iOS shadow
     shadowOffset: { width: 0, height: 2 },  // iOS shadow offset
     shadowOpacity: 0.1,                     // iOS shadow opacity
@@ -168,11 +181,11 @@ export const commonStyles = StyleSheet.create({
   
   /**
    * Logo Component
-   * Standard app logo dimensions and scaling
+   * Responsive logo dimensions and scaling
    */
   logo: {
-    width: 120,                          // Fixed width
-    height: 40,                          // Fixed height
+    width: responsive(120, 140, 100),     // Responsive width
+    height: responsive(40, 45, 35),      // Responsive height
     resizeMode: 'contain',               // Maintain aspect ratio
   },
   
@@ -188,12 +201,12 @@ export const commonStyles = StyleSheet.create({
   
   /**
    * Profile Image
-   * Circular profile picture styling
+   * Circular profile picture styling with responsive size
    */
   profileImg: {
-    width: 50,                           // Fixed width
-    height: 50,                          // Fixed height (square)
-    borderRadius: 25,                    // Make circular (half of width/height)
+    width: componentSizes.profileMedium,  // Responsive width (50px)
+    height: componentSizes.profileMedium, // Responsive height (50px)
+    borderRadius: componentSizes.profileMedium / 2, // Make circular
   },
   
   // === TEXT COLOR UTILITIES ===

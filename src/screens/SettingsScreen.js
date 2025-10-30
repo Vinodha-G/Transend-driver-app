@@ -25,13 +25,15 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
 import HamburgerMenu from '../components/common/HamburgerMenu';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
+import { spacing } from '../utils/responsiveDimensions';
 
 /**
  * SettingsScreen Component
@@ -46,6 +48,9 @@ import { colors, commonStyles } from '../styles/commonStyles';
 const SettingsScreen = ({ navigation }) => {
   // Get user data and notification count from global context
   const { user, unreadNotifications } = useApp();
+  
+  // Get theme context
+  const { theme, isDarkMode, toggleTheme } = useTheme();
 
   // Hamburger menu state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -121,6 +126,15 @@ const SettingsScreen = ({ navigation }) => {
       icon: 'wallet',                         // Wallet icon for payments
       onPress: () => console.log('Wallet pressed'), // Placeholder for wallet feature
     },
+    {
+      id: 3,
+      title: 'Dark Mode',                     // Theme toggle
+      icon: isDarkMode ? 'moon' : 'moon-outline', // Moon icon for dark mode
+      onPress: null,                          // Handled by switch
+      isSwitch: true,                         // Render as switch instead of navigation
+      switchValue: isDarkMode,
+      onSwitchChange: toggleTheme,
+    },
   ];
 
   /**
@@ -153,54 +167,111 @@ const SettingsScreen = ({ navigation }) => {
   /**
    * Render Setting Item
    * 
-   * Renders a single setting row with icon, title, and navigation arrow.
+   * Renders a single setting row with icon, title, and navigation arrow or switch.
    * Used for both general and registration settings.
    * 
    * @param {Object} item - Setting item configuration object
-   * @returns {JSX.Element} TouchableOpacity with setting content
+   * @returns {JSX.Element} TouchableOpacity with setting content or Switch
    */
-  const renderSettingItem = (item) => (
-    <TouchableOpacity 
-      key={item.id} 
-      style={styles.settingBox} 
-      onPress={item.onPress}
-      activeOpacity={0.7}                   // Visual feedback on press
-    >
-      {/* Setting Icon Container */}
-      <View style={styles.settingIcon}>
-        <Ionicons 
-          name={item.icon} 
-          size={24} 
-          color={colors.themeColor}          // Theme color for icons
-        />
-      </View>
-      
-      {/* Setting Content (Title and Arrow) */}
-      <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{item.title}</Text>
-        <Ionicons 
-          name="chevron-forward" 
-          size={20} 
-          color={colors.textLight}           // Light color for navigation arrow
-        />
-      </View>
-    </TouchableOpacity>
-  );
+  const renderSettingItem = (item) => {
+    // Render as switch for toggle settings
+    if (item.isSwitch) {
+      return (
+        <View 
+          key={item.id} 
+          style={[
+            styles.settingBox,
+            {
+              backgroundColor: theme.surface,
+              borderBottomColor: theme.border,
+            }
+          ]}
+        >
+          {/* Setting Icon Container */}
+          <View style={[styles.settingIcon, { backgroundColor: theme.surface }]}>
+            <Ionicons 
+              name={item.icon} 
+              size={24} 
+              color={theme.primary}
+            />
+          </View>
+          
+          {/* Setting Content (Title and Switch) */}
+          <View style={styles.settingContent}>
+            <Text style={[styles.settingTitle, { color: theme.text }]}>{item.title}</Text>
+            <Switch
+              value={item.switchValue}
+              onValueChange={item.onSwitchChange}
+              trackColor={{ 
+                false: theme.border, 
+                true: theme.primary 
+              }}
+              thumbColor={item.switchValue ? theme.textLight : '#F4F3F4'}
+              ios_backgroundColor={theme.border}
+            />
+          </View>
+        </View>
+      );
+    }
+    
+    // Render as navigation item
+    return (
+      <TouchableOpacity 
+        key={item.id} 
+        style={[
+          styles.settingBox, 
+          { 
+            backgroundColor: theme.surface,
+            borderBottomColor: theme.border,
+          }
+        ]} 
+        onPress={item.onPress}
+        activeOpacity={0.7}
+      >
+        {/* Setting Icon Container */}
+        <View style={[styles.settingIcon, { backgroundColor: theme.background }]}>
+          <Ionicons 
+            name={item.icon} 
+            size={24} 
+            color={theme.primary}
+          />
+        </View>
+        
+        {/* Setting Content (Title and Arrow) */}
+        <View style={styles.settingContent}>
+          <Text style={[styles.settingTitle, { color: theme.text }]}>{item.title}</Text>
+          <Ionicons 
+            name="chevron-forward" 
+            size={20} 
+            color={theme.textSecondary}
+          />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <SafeAreaView style={commonStyles.container}>
+    <SafeAreaView 
+      style={[commonStyles.container, { backgroundColor: theme.background }]}
+      edges={['top']}
+    >
       {/* Header with menu, logo, and notifications */}
       <Header
         onMenuPress={handleMenuPress}
         onNotificationPress={handleNotificationPress}
-        showNotificationBadge={unreadNotifications > 0}  // Show badge if unread notifications exist
+        showNotificationBadge={unreadNotifications > 0}
       />
       
       {/* Main content with scrollable sections */}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* User Profile Section */}
         <View style={[commonStyles.customContainer, styles.profileSection]}>
-          <View style={styles.profileContainer}>
+          <View style={[styles.profileContainer, { backgroundColor: theme.surface }]}>
             <View style={[commonStyles.flexAlignCenter, commonStyles.gap2]}>
               {/* User Profile Image */}
               <Image
@@ -213,7 +284,9 @@ const SettingsScreen = ({ navigation }) => {
               />
               {/* User Profile Information */}
               <View style={styles.profileContent}>
-                <Text style={styles.profileName}>{user ? user.name : 'Loading...'}</Text>
+                <Text style={[styles.profileName, { color: theme.text }]}>
+                  {user ? user.name : 'Loading...'}
+                </Text>
               </View>
             </View>
           </View>
@@ -221,16 +294,16 @@ const SettingsScreen = ({ navigation }) => {
 
         {/* General Settings Section */}
         <View style={commonStyles.customContainer}>
-          <Text style={styles.sectionTitle}>General</Text>
-          <View style={styles.settingsList}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
+          <View style={[styles.settingsList, { backgroundColor: theme.surface }]}>
             {generalSettings.map(renderSettingItem)}
           </View>
         </View>
 
         {/* Registration Details Section */}
         <View style={commonStyles.customContainer}>
-          <Text style={styles.sectionTitle}>Registration details</Text>
-          <View style={styles.settingsList}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Registration details</Text>
+          <View style={[styles.settingsList, { backgroundColor: theme.surface }]}>
             {registrationSettings.map(renderSettingItem)}
           </View>
         </View>
@@ -263,22 +336,31 @@ const styles = StyleSheet.create({
   },
   
   /**
+   * Scroll Content Container
+   * Prevents content from being cut off and ensures proper padding
+   */
+  scrollContent: {
+    flexGrow: 1,                           // Allow content to grow
+    paddingBottom: spacing.lg,             // Bottom padding for better scrolling
+  },
+  
+  /**
    * Profile Section Container
    * Top section containing user profile information
    */
   profileSection: {
-    paddingTop: 16,                        // Top spacing from header
+    paddingTop: spacing.md,                // Responsive top spacing from header
   },
   
   /**
    * Profile Card Container
    * Card-style container for user profile display
+   * Note: backgroundColor applied dynamically via theme
    */
   profileContainer: {
-    backgroundColor: colors.white,          // White background
     borderRadius: 12,                      // Rounded corners
-    padding: 16,                           // Internal padding
-    shadowColor: colors.black,             // Shadow for depth
+    padding: spacing.md,                   // Responsive internal padding
+    shadowColor: '#000',                   // Shadow for depth
     shadowOffset: {
       width: 0,
       height: 2,
@@ -309,35 +391,35 @@ const styles = StyleSheet.create({
   /**
    * Profile Name Text
    * User's display name styling
+   * Note: color applied dynamically via theme
    */
   profileName: {
     fontSize: 18,                          // Large text for name
     fontWeight: 'bold',                    // Bold font weight
-    color: colors.titleColor,              // Dark color for readability
   },
   
   /**
    * Section Title
    * Header text for each settings section
+   * Note: color applied dynamically via theme
    */
   sectionTitle: {
     fontSize: 16,                          // Medium title size
     fontWeight: '500',                     // Medium font weight
-    color: colors.titleColor,              // Dark color for visibility
     textTransform: 'capitalize',           // Capitalize first letter
-    marginTop: 24,                         // Top spacing between sections
-    marginBottom: 12,                      // Bottom spacing before list
+    marginTop: spacing.lg,                 // Responsive top spacing between sections
+    marginBottom: spacing.sm + 4,          // Responsive bottom spacing before list
   },
   
   /**
    * Settings List Container
    * Card-style container for setting items
+   * Note: backgroundColor applied dynamically via theme
    */
   settingsList: {
-    backgroundColor: colors.white,          // White background
     borderRadius: 12,                      // Rounded corners
     overflow: 'hidden',                    // Clip child content to rounded corners
-    shadowColor: colors.black,             // Shadow for depth
+    shadowColor: '#000',                   // Shadow for depth
     shadowOffset: {
       width: 0,
       height: 2,
@@ -350,27 +432,29 @@ const styles = StyleSheet.create({
   /**
    * Individual Setting Item
    * Row layout for each setting option
+   * Note: backgroundColor and borderBottomColor applied dynamically via theme
    */
   settingBox: {
     flexDirection: 'row',                  // Horizontal layout
     alignItems: 'center',                  // Center items vertically
-    padding: 16,                           // Internal padding
+    padding: spacing.md,                   // Responsive internal padding
     borderBottomWidth: 1,                  // Bottom border between items
-    borderBottomColor: colors.border,      // Light gray border
+    minHeight: 56,                         // Android touch target
+    // borderBottomColor applied dynamically
   },
   
   /**
    * Setting Icon Container
    * Circular container for setting icons
+   * Note: backgroundColor applied dynamically via theme
    */
   settingIcon: {
     width: 40,                             // Fixed width
     height: 40,                            // Fixed height (square)
     borderRadius: 20,                      // Make circular
-    backgroundColor: colors.light,         // Light background
     justifyContent: 'center',              // Center icon vertically
     alignItems: 'center',                  // Center icon horizontally
-    marginRight: 12,                       // Spacing to the right
+    marginRight: spacing.sm + 4,           // Responsive spacing to the right
   },
   
   /**
@@ -387,10 +471,10 @@ const styles = StyleSheet.create({
   /**
    * Setting Title Text
    * Title text for each setting option
+   * Note: color applied dynamically via theme
    */
   settingTitle: {
     fontSize: 16,                          // Medium text size
-    color: colors.titleColor,              // Dark color for readability
   },
 });
 

@@ -24,6 +24,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiBaseUrlDev": "https://devtrans.transend.ca/api",
+      "apiBaseUrlStaging": "https://stagingapi.transend.ca/api",
+      "apiBaseUrlProd": "https://api.transend.ca/api",
+      "currentEnvironment": "development",
+      "oauthBaseUrl": "https://devtrans.transend.ca",
+      "oauthClientId": "3",
+      "oauthClientSecret": "AB4am1uiyOlqxwfy87LeArGcvezXQe8um2TR2a31",
+      "defaultUsername": "driver@transend.ca",
+      "defaultPassword": "driver@123"
     }
   }
 }

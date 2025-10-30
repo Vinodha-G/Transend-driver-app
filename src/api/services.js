@@ -166,21 +166,45 @@ export const driverService = {
    * @returns {Promise<Object>} Upload result
    */
   updateDocuments: async (documents) => {
-    // Ensure driver_id is included
-    const documentsWithDriverId = {
-      driver_id: 1, // Default driver ID
-      ...documents,
-    };
-    
-    const formData = createFormData(documentsWithDriverId);
-    
-    return handleApiResponse(
-      apiClient.post(ENDPOINTS.DRIVER.DOCUMENTS_UPDATE, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-    );
+    try {
+      // Ensure driver_id is included
+      const documentsWithDriverId = {
+        driver_id: 1, // Default driver ID
+      };
+      
+      // Create FormData with proper file handling
+      const formData = new FormData();
+      
+      // Add driver_id
+      formData.append('driver_id', '1');
+      
+      // Add each document file
+      Object.keys(documents).forEach(key => {
+        if (documents[key] && documents[key].uri) {
+          const file = documents[key];
+          formData.append(key, {
+            uri: file.uri,
+            type: file.type || 'application/pdf',
+            name: file.name || `${key}.pdf`,
+          });
+        }
+      });
+      
+      return handleApiResponse(
+        apiClient.post(ENDPOINTS.DRIVER.DOCUMENTS_UPDATE, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        })
+      );
+    } catch (error) {
+      console.error('Update documents error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to update documents',
+        data: null,
+      };
+    }
   },
 
   /**

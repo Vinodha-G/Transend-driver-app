@@ -43,6 +43,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
 import HamburgerMenu from '../components/common/HamburgerMenu';
 import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
 
 /**
@@ -57,6 +58,9 @@ import { colors, commonStyles } from '../styles/commonStyles';
  * @returns {JSX.Element} CurrentJobScreen component
  */
 const CurrentJobScreen = ({ navigation }) => {
+  // Get theme
+  const { theme } = useTheme();
+  
   // Get data and functions from global context
   const {
     user,
@@ -91,7 +95,8 @@ const CurrentJobScreen = ({ navigation }) => {
     });
 
     return unsubscribe;
-  }, [navigation, loadDashboardData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]); // loadDashboardData is stable from context
 
   /**
    * Current Job Selection
@@ -264,7 +269,10 @@ const CurrentJobScreen = ({ navigation }) => {
    */
   if (isLoading('dashboard') && !currentJob) {
     return (
-      <SafeAreaView style={commonStyles.container}>
+      <SafeAreaView 
+        style={[commonStyles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+      >
         <Header
           onMenuPress={handleMenuPress}
           onNotificationPress={handleNotificationPress}
@@ -295,7 +303,10 @@ const CurrentJobScreen = ({ navigation }) => {
    */
   if (!currentJob) {
     return (
-      <SafeAreaView style={commonStyles.container}>
+      <SafeAreaView 
+        style={[commonStyles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+      >
         {/* Header with menu and notifications */}
         <Header
           onMenuPress={handleMenuPress}
