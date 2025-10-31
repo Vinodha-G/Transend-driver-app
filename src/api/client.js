@@ -18,6 +18,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { logApiError, logNetworkError, getUserFriendlyMessage, ERROR_CATEGORIES } from '../utils/errorLogger';
 
 /**
  * Environment Configuration
@@ -50,6 +51,8 @@ const apiClient = axios.create({
     'X-Requested-With': 'XMLHttpRequest',
     // Add any required authentication headers if needed
   },
+  maxContentLength: Infinity, // Allow large responses
+  maxBodyLength: Infinity, // Allow large request bodies (for file uploads)
 });
 
 /**
@@ -122,13 +125,30 @@ apiClient.interceptors.request.use(
     // Add any additional headers needed by the API
     config.headers['X-Requested-With'] = 'XMLHttpRequest';
     
-    // Don't set Content-Type for FormData - let browser set it with boundary
+    // Don't set Content-Type for FormData - let React Native set it with boundary
+    // This is critical for file uploads in React Native
     if (config.data instanceof FormData) {
+      // Remove Content-Type header completely - React Native will set it with boundary
       delete config.headers['Content-Type'];
+      delete config.headers['content-type']; // Also remove lowercase version
+      
+      // For file uploads, Accept header should allow any content type
+      // Don't restrict to application/json as server may return different content types
+      if (config.headers['Accept'] === 'application/json') {
+        config.headers['Accept'] = '*/*'; // Allow any response type for file uploads
+      }
+      
+      // For React Native, we rely on the platform to set Content-Type with boundary
+      console.log('FormData detected - Content-Type removed, Accept set to */*');
     }
 
     // Log request in development
     if (__DEV__) {
+      // For FormData, don't try to log the data as it's not serializable
+      const logData = config.data instanceof FormData 
+        ? `[FormData with ${config.data._parts?.length || 0} parts]`
+        : config.data;
+      
       console.log('🚀 API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
@@ -137,7 +157,8 @@ apiClient.interceptors.request.use(
           ...config.headers,
           Authorization: token ? 'Bearer [TOKEN]' : 'Not set', // Don't log actual token
         },
-        data: config.data,
+        data: logData,
+        timeout: config.timeout,
       });
     }
 
@@ -169,83 +190,95 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Log errors in development
-    if (__DEV__) {
-      console.error('❌ API Error:', {
-        status: error.response?.status,
-        url: error.config?.url,
-        message: error.message,
-        data: error.response?.data,
-      });
-    }
+    const url = error.config?.url || 'unknown';
+    const method = error.config?.method?.toUpperCase() || 'GET';
+    const request = {
+      method,
+      body: error.config?.data,
+      params: error.config?.params,
+    };
 
     // Handle specific error cases
     if (error.response) {
       // Server responded with error status
       const { status, data } = error.response;
 
+      // Log API error with structured logging
+      logApiError(
+        url,
+        request,
+        { status, data },
+        error,
+        {
+          timestamp: new Date().toISOString(),
+        }
+      );
+
       switch (status) {
         case 401:
           // Unauthorized - clear token and redirect to login
           clearAuthToken();
-          // In a real app, you might dispatch a logout action here
-          console.warn('🔐 Authentication expired. Please log in again.');
           break;
-
         case 403:
           // Forbidden
-          console.warn('🚫 Access denied. Insufficient permissions.');
           break;
-
         case 404:
           // Not found
-          console.warn('📭 Resource not found.');
           break;
-
         case 500:
           // Server error
-          console.error('🔧 Server error. Please try again later.');
           break;
-
         default:
-          console.error(`🔴 HTTP Error ${status}:`, data?.message || error.message);
+          // Other HTTP errors
+          break;
       }
 
-      // Return a consistent error format
+      // Return a consistent error format with user-friendly message
       return Promise.reject({
         status,
-        message: data?.message || `HTTP Error ${status}`,
+        message: getUserFriendlyMessage(data?.message || `HTTP Error ${status}`, `Request failed (${status})`),
         data: data?.data || null,
         originalError: error,
+        category: ERROR_CATEGORIES.API,
       });
     } else if (error.request) {
       // Network error - no response received
-      console.error('🌐 Network Error:', error.message);
-      
+      logNetworkError(url, error, {
+        method,
+        timeout: error.config?.timeout,
+      });
+
       // Check if it's a timeout
       if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
         return Promise.reject({
           status: 0,
-          message: 'Request timeout. The server is taking too long to respond.',
+          message: getUserFriendlyMessage(error, 'Request timeout. The server is taking too long to respond.'),
           data: null,
           originalError: error,
+          category: ERROR_CATEGORIES.NETWORK,
         });
       }
       
+      // Return user-friendly network error message
       return Promise.reject({
         status: 0,
-        message: 'Network error. Please check your internet connection.',
+        message: getUserFriendlyMessage(error, 'Network error. Please check your internet connection.'),
         data: null,
         originalError: error,
+        category: ERROR_CATEGORIES.NETWORK,
       });
     } else {
       // Something else happened
-      console.error('⚠️ Request Setup Error:', error.message);
+      logApiError(url, request, null, error, {
+        type: 'request_setup_error',
+      });
+
       return Promise.reject({
         status: -1,
-        message: error.message || 'An unexpected error occurred',
+        message: getUserFriendlyMessage(error, 'An unexpected error occurred'),
         data: null,
         originalError: error,
+        category: ERROR_CATEGORIES.UNKNOWN,
       });
     }
   }
@@ -278,12 +311,26 @@ export const handleApiResponse = async (apiCall) => {
     // The API returns responses in format: { success: boolean, message: string, data: any }
     const { data } = response;
     
+    console.log('=== handleApiResponse - Processing ===');
+    console.log('response.data:', JSON.stringify(data, null, 2));
+    console.log('data.success:', data.success);
+    console.log('data.data:', data.data);
+    console.log('data.data type:', typeof data.data);
+    console.log('data.data.counts:', data.data?.counts);
+    console.log('data.data.counts type:', typeof data.data?.counts);
+    console.log('data.data.counts keys:', data.data?.counts ? Object.keys(data.data.counts) : 'null');
+    
     if (data.success) {
-      return {
+      const processed = {
         success: true,
         message: data.message,
         data: data.data,
       };
+      console.log('=== handleApiResponse - Returning Success ===');
+      console.log('processed:', JSON.stringify(processed, null, 2));
+      console.log('processed.data.counts:', processed.data?.counts);
+      console.log('=============================================');
+      return processed;
     } else {
       return {
         success: false,

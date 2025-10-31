@@ -168,28 +168,80 @@ const DocumentsScreen = ({ navigation }) => {
 
       // Prepare file for upload - Format for FormData
       // For React Native, FormData expects an object with uri, type, and name
+      // Ensure file URI is properly formatted and accessible
+      let fileUri = file.uri;
+      
+      // Ensure URI is properly formatted for React Native
+      // expo-document-picker with copyToCacheDirectory: true should provide a valid URI
+      // But we ensure it's in the correct format
+      if (!fileUri) {
+        Alert.alert('Error', 'Invalid file URI. Please try selecting the file again.');
+        setUploadingDocument(null);
+        return;
+      }
+      
+      // Determine MIME type
+      let mimeType = file.mimeType;
+      if (!mimeType) {
+        const extension = (file.name || fileUri).split('.').pop()?.toLowerCase();
+        if (extension === 'pdf') {
+          mimeType = 'application/pdf';
+        } else if (['jpg', 'jpeg'].includes(extension)) {
+          mimeType = 'image/jpeg';
+        } else if (extension === 'png') {
+          mimeType = 'image/png';
+        } else {
+          mimeType = 'application/pdf'; // Default
+        }
+      }
+      
+      // Ensure filename is set
+      let fileName = file.name;
+      if (!fileName) {
+        const extension = mimeType.includes('pdf') ? 'pdf' : (mimeType.includes('png') ? 'png' : 'jpg');
+        fileName = `${documentType}.${extension}`;
+      }
+      
       const documentFiles = {
         [documentType]: {
-          uri: file.uri,
-          type: file.mimeType || 'application/pdf',
-          name: file.name || `document.${file.uri.split('.').pop()}`,
+          uri: fileUri,
+          type: mimeType,
+          name: fileName,
+          mimeType: mimeType, // Include both type and mimeType for compatibility
         },
       };
+      
+      console.log('Prepared file for upload:', {
+        documentType,
+        fileName,
+        mimeType,
+        uri: fileUri.substring(0, 50) + '...',
+        size: file.size,
+      });
 
       // Upload via API
       const success = await updateDriverDocuments(documentFiles);
 
       if (success) {
-        Alert.alert('Success', 'Document uploaded successfully!');
-        // Refresh document list
+        // Show success message matching API response
+        Alert.alert('Success', 'Documents updated successfully');
+        // Refresh document list to show updated URLs
         await loadDriverDocuments();
       } else {
         const error = getError('documentUpdate');
-        Alert.alert('Error', error || 'Failed to upload document. Please try again.');
+        const errorMessage = error || 'Failed to upload document. Please try again.';
+        console.error('Document upload failed:', errorMessage);
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
       console.error('Document upload error:', error);
-      Alert.alert('Error', 'An error occurred while uploading the document.');
+      const errorMessage = error.message || 'An error occurred while uploading the document.';
+      Alert.alert(
+        'Upload Error', 
+        errorMessage.includes('Network') || errorMessage.includes('connection')
+          ? 'Unable to connect to the server. Please check your internet connection and try again.'
+          : errorMessage
+      );
     } finally {
       setUploadingDocument(null);
     }

@@ -25,7 +25,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
@@ -47,7 +47,7 @@ import { spacing } from '../utils/responsiveDimensions';
  */
 const SettingsScreen = ({ navigation }) => {
   // Get user data and notification count from global context
-  const { user, unreadNotifications } = useApp();
+  const { user, unreadNotifications, markDriverAbsent, isLoading, getError } = useApp();
   
   // Get theme context
   const { theme, isDarkMode, toggleTheme } = useTheme();
@@ -108,6 +108,56 @@ const SettingsScreen = ({ navigation }) => {
   };
 
   /**
+   * Handle Mark Absent Press
+   * 
+   * Shows confirmation dialog and marks the driver as absent for today.
+   * Updates parcel assignments and refreshes dashboard data.
+   */
+  const handleMarkAbsentPress = () => {
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const dateDisplay = today.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    Alert.alert(
+      'Mark as Absent',
+      `Are you sure you want to mark yourself as absent for ${dateDisplay}? This will update your parcel assignments.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Mark Absent',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await markDriverAbsent();
+            if (success) {
+              Alert.alert(
+                'Success',
+                'Driver marked absent successfully.',
+                [{ text: 'OK' }]
+              );
+            } else {
+              const error = getError('markAbsent');
+              Alert.alert(
+                'Error',
+                error || 'Failed to mark driver as absent. Please try again.',
+                [{ text: 'OK' }]
+              );
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  /**
    * General Settings Configuration
    * 
    * Array of general app settings that affect overall user experience.
@@ -128,6 +178,13 @@ const SettingsScreen = ({ navigation }) => {
     },
     {
       id: 3,
+      title: 'Mark as Absent',                // Attendance/availability management
+      icon: 'calendar-outline',               // Calendar icon for attendance
+      onPress: handleMarkAbsentPress,         // Mark driver as absent
+      disabled: isLoading('markAbsent'),      // Disable while processing
+    },
+    {
+      id: 4,
       title: 'Dark Mode',                     // Theme toggle
       icon: isDarkMode ? 'moon' : 'moon-outline', // Moon icon for dark mode
       onPress: null,                          // Handled by switch
@@ -223,10 +280,12 @@ const SettingsScreen = ({ navigation }) => {
           { 
             backgroundColor: theme.surface,
             borderBottomColor: theme.border,
+            opacity: item.disabled ? 0.5 : 1, // Dim if disabled
           }
         ]} 
-        onPress={item.onPress}
+        onPress={item.disabled ? undefined : item.onPress}
         activeOpacity={0.7}
+        disabled={item.disabled}
       >
         {/* Setting Icon Container */}
         <View style={[styles.settingIcon, { backgroundColor: theme.background }]}>

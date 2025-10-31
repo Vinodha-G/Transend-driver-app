@@ -29,40 +29,151 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useApp } from '../context/AppContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
+import { spacing, componentSizes, responsive } from '../utils/responsiveDimensions';
 
 // Get device screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
 
-const JobDetailsScreen = ({ route }) => {
-  // Extract job object from navigation route params
-  const job = route?.params?.job ?? null;
+const JobDetailsScreen = ({ route, navigation }) => {
+  // Get theme
+  const { theme } = useTheme();
+  
+  // Get data and functions from global context
+  const {
+    user,
+    jobDetails,
+    loadJobDetails,
+    isLoading,
+    getError,
+    clearError,
+  } = useApp();
 
-  // Show fallback message if job data is missing
-  if (!job) {
+  // Extract job object from navigation route params (used to get parcel_id)
+  const jobParam = route?.params?.job ?? null;
+
+  // State for job data (from API or params)
+  const [job, setJob] = useState(jobParam);
+  
+  // Extract parcel ID from job param (try multiple fields)
+  const parcelId = jobParam?.order_id || jobParam?.parcel_id || jobParam?.id || jobParam?.tracking_id || null;
+
+  // Load job details from API when component mounts or parcel ID changes
+  useEffect(() => {
+    if (parcelId) {
+      console.log('Loading job details for parcel:', parcelId);
+      loadJobDetails(parcelId).catch(error => {
+        console.error('Failed to load job details:', error);
+        // Don't update job state on error - keep showing param data
+      });
+    }
+  }, [parcelId, loadJobDetails]);
+
+  // Update job when jobDetails changes
+  useEffect(() => {
+    if (jobDetails) {
+      setJob(jobDetails);
+    }
+  }, [jobDetails]);
+
+  // Safely get theme values with fallbacks
+  const safeTheme = {
+    background: theme?.background || '#f5f5f5',
+    surface: theme?.surface || '#ffffff',
+    text: theme?.text || '#1f1f1f',
+    textSecondary: theme?.textSecondary || '#8f8f8f',
+    primary: theme?.primary || '#00897B',
+    error: theme?.error || '#ff4b4b',
+    textLight: theme?.textLight || '#FFFFFF',
+  };
+
+  // Show loading state
+  if (isLoading && isLoading('jobDetails') && !job) {
     return (
-      <SafeAreaView style={commonStyles.container}>
-        <View style={styles.centered}>
-          <Text style={styles.emptyMessage}>Job data not available.</Text>
+      <SafeAreaView style={[commonStyles.container, { backgroundColor: safeTheme.background }]} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={safeTheme.primary} />
+          <Text style={[styles.loadingText, { color: safeTheme.textSecondary }]}>
+            Loading job details...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Safely extract job details with fallback values
-  const orderId = job?.order_id ?? 'N/A';
-  const trackingId = job?.tracking_id ?? 'N/A';
-  const customerName = job?.customer_name ?? 'N/A';
-  const fromAddress = job?.from_address ?? 'N/A';
-  const toAddress = job?.to_address ?? 'N/A';
-  const shipmentDate = job?.shipment_date ?? 'N/A';
+  // Show error state (only if no job data at all)
+  const errorMessage = getError && getError('jobDetails');
+  if (errorMessage && !job) {
+    return (
+      <SafeAreaView style={[commonStyles.container, { backgroundColor: safeTheme.background }]} edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={safeTheme.error} />
+          <Text style={[styles.errorText, { color: safeTheme.text }]}>
+            {errorMessage}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: safeTheme.primary }]}
+            onPress={() => {
+              if (clearError) clearError('jobDetails');
+              if (parcelId && loadJobDetails) {
+                loadJobDetails(parcelId).catch(err => console.error('Retry failed:', err));
+              }
+            }}
+          >
+            <Text style={[styles.retryButtonText, { color: safeTheme.textLight }]}>
+              Retry
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show fallback message if job data is missing
+  if (!job) {
+    return (
+      <SafeAreaView style={[commonStyles.container, { backgroundColor: safeTheme.background }]} edges={['top']}>
+        <View style={styles.centered}>
+          <Ionicons name="document-outline" size={64} color={safeTheme.textSecondary} />
+          <Text style={[styles.emptyMessage, { color: safeTheme.text }]}>
+            Job data not available.
+          </Text>
+          {parcelId && loadJobDetails && (
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: safeTheme.primary, marginTop: spacing.md }]}
+              onPress={() => {
+                loadJobDetails(parcelId).catch(err => console.error('Load details failed:', err));
+              }}
+            >
+              <Text style={[styles.retryButtonText, { color: safeTheme.textLight }]}>
+                Load Details
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Safely extract job details with fallback values (prioritize API data)
+  const orderId = job?.order_id ?? jobParam?.order_id ?? 'N/A';
+  const trackingId = job?.tracking_id ?? jobParam?.tracking_id ?? 'N/A';
+  const customerName = job?.customer_name ?? jobParam?.customer_name ?? 'N/A';
+  const fromAddress = job?.from_address ?? jobParam?.from_address ?? jobParam?.from_address_text ?? 'N/A';
+  const toAddress = job?.to_address ?? jobParam?.to_address ?? jobParam?.to_address_text ?? 'N/A';
+  const shipmentDate = job?.shipment_date ?? jobParam?.shipment_date ?? 'N/A';
 
   // Booking details extraction with safety checks
-  const bookingDetails = job?.booking_details ?? {};
+  const bookingDetails = job?.booking_details ?? jobParam?.booking_details ?? {};
   const variantSummary = bookingDetails?.variant_summary ?? 'N/A';
   const equipments = bookingDetails?.equipments ?? 'N/A';
   const totalWeight = bookingDetails?.total_weight ?? 'N/A';
@@ -88,24 +199,45 @@ const JobDetailsScreen = ({ route }) => {
   /**
    * getCurrentLocation - Requests location permission and fetches device coordinates
    * Updates userLocation state and mapRegion to center map on the user
+   * Includes comprehensive error handling to prevent crashes
    */
   const getCurrentLocation = async () => {
     try {
-      // Ask for foreground location permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
-
-      // If permission denied, show alert and return
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission denied',
-          'Location permission is required to show map.'
-        );
+      // Check if Location is available
+      if (!Location) {
+        console.warn('Location service not available');
         return;
       }
 
-      // Get current position
-      const location = await Location.getCurrentPositionAsync({});
+      // Ask for foreground location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      // If permission denied, don't show alert (might be annoying) - just return silently
+      if (status !== 'granted') {
+        console.log('Location permission denied');
+        return;
+      }
+
+      // Get current position with timeout and error handling
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 10000, // 10 second timeout
+      });
+
+      // Validate location data
+      if (!location || !location.coords) {
+        console.warn('Invalid location data received');
+        return;
+      }
+
       const { latitude, longitude } = location.coords;
+
+      // Validate coordinates are numbers
+      if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
+          isNaN(latitude) || isNaN(longitude)) {
+        console.warn('Invalid coordinates:', { latitude, longitude });
+        return;
+      }
 
       // Update userLocation for marker and mapRegion for centering
       setUserLocation({ latitude, longitude });
@@ -116,109 +248,154 @@ const JobDetailsScreen = ({ route }) => {
         longitudeDelta: 0.0421,
       });
     } catch (error) {
+      // Log error but don't crash - map will still show with default region
       console.error('Error fetching location:', error);
+      // Don't show alert to user - silent failure is better than crash
     }
   };
 
+  // Validate mapRegion to prevent crashes
+  const safeMapRegion = {
+    latitude: typeof mapRegion?.latitude === 'number' && !isNaN(mapRegion.latitude) 
+      ? mapRegion.latitude 
+      : 43.6532,
+    longitude: typeof mapRegion?.longitude === 'number' && !isNaN(mapRegion.longitude)
+      ? mapRegion.longitude
+      : -79.3832,
+    latitudeDelta: typeof mapRegion?.latitudeDelta === 'number' && !isNaN(mapRegion.latitudeDelta)
+      ? mapRegion.latitudeDelta
+      : 0.0922,
+    longitudeDelta: typeof mapRegion?.longitudeDelta === 'number' && !isNaN(mapRegion.longitudeDelta)
+      ? mapRegion.longitudeDelta
+      : 0.0421,
+  };
+
   return (
-    <SafeAreaView style={commonStyles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <SafeAreaView style={[commonStyles.container, { backgroundColor: safeTheme.background }]} edges={['top']}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* ================= Map Section ================= */}
         <View style={styles.mapContainer}>
           <MapView
             provider={PROVIDER_GOOGLE}     // Use Google Maps provider
             style={styles.map}              // Full container size
-            region={mapRegion}              // Center map on this region
+            region={safeMapRegion}          // Center map on this region (validated)
             showsUserLocation={true}        // Show user's location on map
             showsMyLocationButton={true}    // Button to center on user location
+            onError={(error) => {
+              console.error('MapView error:', error);
+              // Don't crash - just log the error
+            }}
           >
             {/* ---------------- User Marker ---------------- */}
-            {userLocation && (
+            {userLocation && 
+             typeof userLocation.latitude === 'number' && 
+             typeof userLocation.longitude === 'number' &&
+             !isNaN(userLocation.latitude) && 
+             !isNaN(userLocation.longitude) && (
               <Marker
                 coordinate={userLocation}
                 title="Your Location"
-                pinColor={colors.themeColor} // Use theme color for user
+                pinColor={colors?.themeColor || '#00897B'} // Use theme color for user
               />
             )}
 
             {/* ---------------- Pickup Marker ---------------- */}
             <Marker
               coordinate={{
-                latitude: mapRegion.latitude + 0.01, // Demo offset; can replace with geocoded pickup coords
-                longitude: mapRegion.longitude + 0.01,
+                latitude: safeMapRegion.latitude + 0.01, // Demo offset; can replace with geocoded pickup coords
+                longitude: safeMapRegion.longitude + 0.01,
               }}
               title="Pickup Location"
-              description={fromAddress}   // Shows full from_address on marker
-              pinColor={colors.danger}   // Red color for pickup
+              description={typeof fromAddress === 'string' ? fromAddress : 'Pickup address'}   // Shows full from_address on marker
+              pinColor={colors?.danger || '#ff4b4b'}   // Red color for pickup
             />
 
             {/* ---------------- Dropoff Marker ---------------- */}
             <Marker
               coordinate={{
-                latitude: mapRegion.latitude - 0.01, // Demo offset; replace with geocoded dropoff coords
-                longitude: mapRegion.longitude - 0.01,
+                latitude: safeMapRegion.latitude - 0.01, // Demo offset; replace with geocoded dropoff coords
+                longitude: safeMapRegion.longitude - 0.01,
               }}
               title="Dropoff Location"
-              description={toAddress}     // Shows full to_address on marker
-              pinColor={colors.success}   // Green color for dropoff
+              description={typeof toAddress === 'string' ? toAddress : 'Dropoff address'}     // Shows full to_address on marker
+              pinColor={colors?.success || '#20b149'}   // Green color for dropoff
             />
           </MapView>
         </View>
 
         {/* ================= Job Details Section ================= */}
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: safeTheme.surface }]}>
 
           {/* ---------------- Customer Info ---------------- */}
           <View style={styles.headerContainer}>
             <Image
-              source={require('../../assets/images/profile/p1.png')}
+              source={
+                (job?.profile_image && typeof job.profile_image === 'string' && job.profile_image.trim() !== '') ||
+                (jobParam?.profileImage && typeof jobParam.profileImage === 'string' && jobParam.profileImage.trim() !== '')
+                  ? { uri: job?.profile_image || jobParam?.profileImage }
+                  : require('../../assets/images/profile/p1.png')
+              }
               style={styles.profileImage}
+              onError={(error) => {
+                console.error('Image load error:', error);
+                // Image will fallback to default via require() if URI fails
+              }}
+              defaultSource={require('../../assets/images/profile/p1.png')}
             />
-            <View>
-              <Text style={[styles.companyName, commonStyles.titleColor]}>
-                {customerName}   {/* Customer Name */}
+            <View style={styles.customerInfo}>
+              <Text style={[styles.companyName, { color: safeTheme.text }]}>
+                {customerName}
               </Text>
-              {/* <Text style={styles.orderId}>Order ID: {orderId}</Text> */}
-              <Text style={styles.trackingId}>Tracking ID: {trackingId}</Text>
+              <Text style={[styles.trackingId, { color: safeTheme.primary }]}>
+                Tracking ID: {trackingId}
+              </Text>
+              {orderId && orderId !== 'N/A' && (
+                <Text style={[styles.orderId, { color: safeTheme.textSecondary }]}>
+                  Order ID: {orderId}
+                </Text>
+              )}
             </View>
           </View>
 
           {/* ---------------- Shipment Info ---------------- */}
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Shipment Date:</Text>
-            <Text style={styles.value}>{shipmentDate}</Text>
+            <Text style={[styles.label, { color: safeTheme.textSecondary }]}>Shipment Date:</Text>
+            <Text style={[styles.value, { color: safeTheme.text }]}>{shipmentDate}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>From:</Text>
-            <Text style={styles.value}>{fromAddress}</Text>
+            <Text style={[styles.label, { color: safeTheme.textSecondary }]}>From:</Text>
+            <Text style={[styles.value, { color: safeTheme.text }]}>{fromAddress}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.label}>To:</Text>
-            <Text style={styles.value}>{toAddress}</Text>
+            <Text style={[styles.label, { color: safeTheme.textSecondary }]}>To:</Text>
+            <Text style={[styles.value, { color: safeTheme.text }]}>{toAddress}</Text>
           </View>
         </View>
 
         {/* ================= Booking Details Section ================= */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Booking Details</Text>
+        <View style={[styles.section, { backgroundColor: safeTheme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: safeTheme.primary }]}>Booking Details</Text>
 
           {/* Variant Summary */}
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Variant Summary:</Text>
-            <Text style={styles.value}>{variantSummary}</Text>
+            <Text style={[styles.label, { color: safeTheme.textSecondary }]}>Variant Summary:</Text>
+            <Text style={[styles.value, { color: safeTheme.text }]}>{variantSummary}</Text>
           </View>
 
           {/* Equipments */}
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Equipments:</Text>
-            <Text style={styles.value}>{equipments}</Text>
+            <Text style={[styles.label, { color: safeTheme.textSecondary }]}>Equipments:</Text>
+            <Text style={[styles.value, { color: safeTheme.text }]}>{equipments}</Text>
           </View>
 
           {/* Total Weight */}
           <View style={styles.detailRow}>
-            <Text style={styles.label}>Total Weight:</Text>
-            <Text style={styles.value}>{totalWeight}</Text>
+            <Text style={[styles.label, { color: safeTheme.textSecondary }]}>Total Weight:</Text>
+            <Text style={[styles.value, { color: safeTheme.text }]}>{totalWeight}</Text>
           </View>
         </View>
 
@@ -230,12 +407,53 @@ const JobDetailsScreen = ({ route }) => {
 // ================= StyleSheet =================
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingBottom: 20, // Space at bottom for scrolling
+    paddingBottom: spacing.xl,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+
+  loadingText: {
+    fontSize: responsive(16, 18, 14),
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+
+  errorText: {
+    fontSize: responsive(16, 18, 14),
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+
+  retryButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: componentSizes.buttonBorderRadius,
+    minHeight: componentSizes.buttonHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  retryButtonText: {
+    fontSize: responsive(16, 18, 14),
+    fontWeight: '600',
   },
 
   mapContainer: {
     width: width,
-    height: height * 0.35, // 35% of screen height
+    height: responsive(height * 0.35, height * 0.4, height * 0.3),
   },
 
   map: {
@@ -244,79 +462,84 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
-    shadowColor: colors.black,
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: componentSizes.cardBorderRadius,
+    padding: spacing.md,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    ...componentSizes.cardShadow,
+    elevation: componentSizes.cardElevation,
   },
 
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
 
   profileImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    marginRight: 12,
+    width: responsive(64, 70, 56),
+    height: responsive(64, 70, 56),
+    borderRadius: responsive(32, 35, 28),
+    marginRight: spacing.md,
+  },
+
+  customerInfo: {
+    flex: 1,
   },
 
   companyName: {
-    fontSize: 18,
+    fontSize: responsive(18, 20, 16),
     fontWeight: 'bold',
+    marginBottom: spacing.xs,
   },
 
   orderId: {
-    fontSize: 14,
-    color: colors.textLight,
+    fontSize: responsive(14, 16, 12),
+    marginTop: spacing.xs,
   },
 
   trackingId: {
-    fontSize: 14,
-    color: colors.themeColor,
+    fontSize: responsive(14, 16, 12),
+    fontWeight: '600',
   },
 
   detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // label on left, value on right
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    alignItems: 'flex-start',
   },
 
   label: {
-    fontSize: 14,
-    color: colors.textLight,
+    fontSize: responsive(14, 16, 12),
+    flex: 1,
+    marginRight: spacing.sm,
   },
 
   value: {
-    fontSize: 14,
-    color: colors.titleColor,
-    flexShrink: 1,   // prevent overflow
+    fontSize: responsive(14, 16, 12),
+    flex: 2,
     textAlign: 'right',
+    flexWrap: 'wrap',
   },
 
   sectionTitle: {
-    fontSize: 16,
+    fontSize: responsive(16, 18, 14),
     fontWeight: '600',
-    color: colors.themeColor,
-    marginBottom: 8,
+    marginBottom: spacing.md,
   },
 
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
   emptyMessage: {
-    fontSize: 16,
-    color: colors.textLight,
+    fontSize: responsive(16, 18, 14),
+    marginTop: spacing.md,
+    textAlign: 'center',
   },
 });
 

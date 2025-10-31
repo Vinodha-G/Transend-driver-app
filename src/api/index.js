@@ -21,7 +21,7 @@ export { ENDPOINTS, buildEndpoint, HTTP_METHODS, STATUS_CODES, CONTENT_TYPES } f
 export { default as authService } from './auth';
 
 // API services
-export { driverService, jobService, notificationService } from './services';
+export { driverService, jobService, notificationService, locationService } from './services';
 
 // Default export with all services grouped
 export { default as apiServices } from './services';

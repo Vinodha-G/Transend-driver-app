@@ -26,7 +26,7 @@ export const ENDPOINTS = {
    */
   DRIVER: {
     // Profile management
-    PROFILE: '/driver/profile',                    // GET: Get driver profile
+    PROFILE: '/driver/profile',                    // GET/POST: Get driver profile (with body: {driver_id})
     PROFILE_UPDATE: '/driver/profile/update',      // POST: Update driver profile
     
     // Document management
@@ -34,7 +34,10 @@ export const ENDPOINTS = {
     DOCUMENTS_UPDATE: '/driver/documents/update',  // POST: Update driver documents
     
     // Dashboard and job data
-    DASHBOARD: '/driver/dashboard',                // GET: Get dashboard data
+    DASHBOARD: '/driver/dashboard',                // GET/POST: Get dashboard data (with body: {driver_id})
+    CURRENT_JOBS: '/driver/current-jobs',         // POST: Get current (active/ongoing) jobs for driver
+    MY_RIDES: '/driver/my-rides',                  // POST: Get driver rides filtered by status
+    JOB_DETAILS: '/driver/job-details',            // POST: Get detailed job/parcel information
     
     // Attendance management
     MARK_ABSENT: '/driver/mark-absent',           // POST: Mark driver as absent
@@ -87,7 +90,7 @@ export const ENDPOINTS = {
    * APIs for location tracking and route management.
    */
   LOCATION: {
-    UPDATE: '/location/update',                   // POST: Update driver location
+    UPDATE: '/driver/location',                   // POST: Update driver location (publishes to Kafka)
     TRACK_JOB: '/location/track/{jobId}',        // GET: Get job tracking info
   },
 

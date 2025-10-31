@@ -27,18 +27,21 @@
  * @version 1.0.0
  */
 
-import React, { useEffect, useRef, useState} from 'react';
-import { View, Text, ScrollView, FlatList, StyleSheet, RefreshControl, findNodeHandle  } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, FlatList, StyleSheet, RefreshControl, findNodeHandle, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/common/Header';
 import HamburgerMenu from '../components/common/HamburgerMenu';
 import StatsCard from '../components/common/StatsCard';
 import JobCard from '../components/common/JobCard';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
 import { spacing } from '../utils/responsiveDimensions';
+import { logError, ERROR_CATEGORIES } from '../utils/errorLogger';
+import { showError } from '../utils/toast';
 
 /**
  * HomeScreen Component
@@ -81,10 +84,23 @@ const HomeScreen = ({ navigation }) => {
    * 
    * Refreshes dashboard data when screen comes into focus.
    * Ensures user always sees the latest statistics and jobs.
+   * Includes error handling to prevent crashes.
    */
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      loadDashboardData();
+      // Reload dashboard data with error handling
+      loadDashboardData().catch(error => {
+        logError(
+          ERROR_CATEGORIES.API,
+          'Failed to load dashboard on screen focus',
+          error,
+          { screen: 'HomeScreen', action: 'focus' }
+        );
+        // Don't show toast on every focus - only show if there's an actual error state
+        if (getError('dashboard')) {
+          showError(getError('dashboard'), 'Dashboard Error');
+        }
+      });
     });
 
     return unsubscribe;
@@ -151,7 +167,7 @@ const HomeScreen = ({ navigation }) => {
    * Gets new jobs from the processed jobs array with proper field mapping.
    * Uses the jobs that have been properly mapped from API data.
    */
-  const newJobs = jobs.filter(job => job.status === 'new');
+  const newJobs = (jobs || []).filter(job => job && job.status === 'new');
 
 
  const scrollToJobs = () => {
@@ -210,9 +226,21 @@ const HomeScreen = ({ navigation }) => {
    * 
    * Refreshes all data when user pulls down on the screen.
    * Provides up-to-date job statistics and new jobs.
+   * Includes comprehensive error handling.
    */
   const handleRefresh = async () => {
-    await refreshAllData();
+    try {
+      await refreshAllData();
+    } catch (error) {
+      logError(
+        ERROR_CATEGORIES.API,
+        'Failed to refresh dashboard data',
+        error,
+        { screen: 'HomeScreen', action: 'pull_to_refresh' }
+      );
+      const errorMessage = error?.message || 'Failed to refresh data. Please try again.';
+      showError(errorMessage, 'Refresh Error');
+    }
   };
 
   /**

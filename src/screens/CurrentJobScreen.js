@@ -45,6 +45,7 @@ import HamburgerMenu from '../components/common/HamburgerMenu';
 import { useApp } from '../context/AppContext';
 import { useTheme } from '../context/ThemeContext';
 import { colors, commonStyles } from '../styles/commonStyles';
+import { spacing, componentSizes, responsive } from '../utils/responsiveDimensions';
 
 /**
  * CurrentJobScreen Component
@@ -65,11 +66,13 @@ const CurrentJobScreen = ({ navigation }) => {
   const {
     user,
     jobs,
+    currentJobs,
     unreadNotifications,
     dashboardData,
     loading,
     errors,
     loadDashboardData,
+    loadCurrentJobs,
     updateJobStatus,
     refreshAllData,
     isLoading,
@@ -86,30 +89,42 @@ const CurrentJobScreen = ({ navigation }) => {
   /**
    * Screen Focus Effect
    * 
-   * Refreshes dashboard data when screen comes into focus.
-   * Ensures user always sees the latest job information.
+   * Refreshes current jobs data when screen comes into focus.
+   * Ensures user always sees the latest active job information.
    */
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      loadDashboardData();
+      // Load current jobs from dedicated API endpoint
+      loadCurrentJobs();
     });
 
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation]); // loadDashboardData is stable from context
+  }, [navigation]); // loadCurrentJobs is stable from context
+
+  /**
+   * Load Current Jobs on Mount
+   * 
+   * Loads current jobs when component mounts.
+   */
+  useEffect(() => {
+    loadCurrentJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   /**
    * Current Job Selection
    * 
-   * Finds the active job from the jobs array. Priority order:
-   * 1. Jobs with 'accepted' status (newly accepted)
-   * 2. Jobs with 'pickedup' status (in progress)
-   * 
-   * For API integration, we also check dashboardData.new_jobs
+   * Gets the first active job from the currentJobs array.
+   * Priority order:
+   * 1. First job from currentJobs API (most recent active job)
+   * 2. Fallback to jobs array if currentJobs is empty (for backward compatibility)
    */
-  const currentJob = jobs.find(job => job.status === 'accepted') || 
-                    jobs.find(job => job.status === 'pickedup') ||
-                    (dashboardData.new_jobs && dashboardData.new_jobs.length > 0 ? dashboardData.new_jobs[0] : null);
+  const currentJob = (currentJobs && currentJobs.length > 0) 
+    ? currentJobs[0] 
+    : ((jobs || []).find(job => job && job.status === 'accepted') || 
+       (jobs || []).find(job => job && job.status === 'pickedup') ||
+       (dashboardData?.new_jobs && dashboardData.new_jobs.length > 0 ? dashboardData.new_jobs[0] : null));
 
   /**
    * Handle Menu Press
@@ -230,10 +245,10 @@ const CurrentJobScreen = ({ navigation }) => {
   /**
    * Handle Pull to Refresh
    * 
-   * Refreshes all data when user pulls down on the screen.
+   * Refreshes current jobs data when user pulls down on the screen.
    */
   const handleRefresh = async () => {
-    await refreshAllData();
+    await loadCurrentJobs();
   };
 
   /**
@@ -249,25 +264,25 @@ const CurrentJobScreen = ({ navigation }) => {
         error,
         [
           { text: 'Cancel', onPress: () => clearError(operation) },
-          { text: 'Retry', onPress: () => loadDashboardData() }
+          { text: 'Retry', onPress: () => loadCurrentJobs() }
         ]
       );
     }
   };
 
-  // Show error alert for dashboard errors
+  // Show error alert for currentJobs errors
   useEffect(() => {
-    if (getError('dashboard')) {
-      showErrorAlert('dashboard');
+    if (getError('currentJobs')) {
+      showErrorAlert('currentJobs');
     }
-  }, [getError('dashboard')]);
+  }, [getError('currentJobs')]);
 
   /**
    * Loading State Render
    * 
-   * Shows loading indicator while fetching dashboard data.
+   * Shows loading indicator while fetching current jobs data.
    */
-  if (isLoading('dashboard') && !currentJob) {
+  if (isLoading('currentJobs') && !currentJob) {
     return (
       <SafeAreaView 
         style={[commonStyles.container, { backgroundColor: theme.background }]}
@@ -280,8 +295,8 @@ const CurrentJobScreen = ({ navigation }) => {
         />
         
         <View style={styles.loadingContainer}>
-          <Ionicons name="refresh" size={40} color={colors.themeColor} />
-          <Text style={styles.loadingText}>Loading job data...</Text>
+          <Ionicons name="refresh" size={40} color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading job data...</Text>
         </View>
 
         {/* Hamburger Menu */}
@@ -316,14 +331,56 @@ const CurrentJobScreen = ({ navigation }) => {
         
         {/* Empty state content */}
         <View style={styles.emptyContainer}>
-          <Ionicons name="car-outline" size={80} color={colors.contentColor} />
-          <Text style={styles.emptyTitle}>No Active Job</Text>
-          <Text style={styles.emptyMessage}>
+          <Ionicons name="car-outline" size={80} color={theme.textSecondary} />
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No Active Job</Text>
+          <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
             You don't have any active jobs at the moment. Check back later for new opportunities.
           </Text>
         </View>
 
         {/* Hamburger Menu */}
+        <HamburgerMenu
+          visible={menuVisible}
+          onClose={handleMenuClose}
+          onNavigate={handleMenuNavigation}
+          user={user}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  /**
+   * Error State Render
+   * 
+   * Shows error message with retry option if data loading fails.
+   */
+  if (getError('currentJobs') || getError('jobUpdate')) {
+    return (
+      <SafeAreaView 
+        style={[commonStyles.container, { backgroundColor: theme.background }]}
+        edges={['top']}
+      >
+        <Header
+          onMenuPress={handleMenuPress}
+          onNotificationPress={handleNotificationPress}
+          showNotificationBadge={unreadNotifications > 0}
+        />
+        
+        <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
+          <Ionicons name="warning-outline" size={40} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.text }]}>
+            {getError('currentJobs') || getError('jobUpdate')}
+          </Text>
+          <TouchableOpacity 
+            style={[styles.retryButton, { backgroundColor: theme.primary }]} 
+            onPress={handleRefresh}
+          >
+            <Text style={[styles.retryButtonText, { color: theme.textLight || '#FFFFFF' }]}>
+              Retry
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <HamburgerMenu
           visible={menuVisible}
           onClose={handleMenuClose}
@@ -341,7 +398,7 @@ const CurrentJobScreen = ({ navigation }) => {
    * Includes status tracking, job details, and action controls.
    */
   return (
-    <SafeAreaView style={commonStyles.container}>
+    <SafeAreaView style={[commonStyles.container, { backgroundColor: theme.background }]} edges={['top']}>
       {/* Header with menu and notifications */}
       <Header
         onMenuPress={handleMenuPress}
@@ -353,21 +410,24 @@ const CurrentJobScreen = ({ navigation }) => {
       <ScrollView 
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl
-            refreshing={isLoading('dashboard')}
-            onRefresh={handleRefresh}
-            colors={[colors.themeColor]}
-            tintColor={colors.themeColor}
-          />
+         <RefreshControl
+           refreshing={isLoading('currentJobs')}
+           onRefresh={handleRefresh}
+           colors={[theme.primary]}
+           tintColor={theme.primary}
+         />
         }
       >
         <View style={[commonStyles.customContainer, styles.container]}>
           
           {/* Current Job Status Section */}
           <View style={styles.statusContainer}>
-            <Text style={styles.statusTitle}>Current Job Status</Text>
+            <Text style={[styles.statusTitle, { color: theme.text }]}>Current Job Status</Text>
             {/* Dynamic status badge with color coding */}
-            <View style={[styles.statusBadge, styles[`${currentJob.status || 'new'}Status`]]}>
+            <View style={[
+              styles.statusBadge, 
+              { backgroundColor: currentJob.status === 'accepted' ? theme.warning : theme.info }
+            ]}>
               <Text style={styles.statusText}>
                 {(currentJob.status || 'new').toUpperCase()}
               </Text>
@@ -375,7 +435,7 @@ const CurrentJobScreen = ({ navigation }) => {
           </View>
 
           {/* Job Information Card */}
-          <View style={styles.jobCard}>
+          <View style={[styles.jobCard, { backgroundColor: theme.surface }]}>
             {/* Job Header with company info */}
             <View style={styles.jobHeader}>
               <Image
@@ -387,27 +447,47 @@ const CurrentJobScreen = ({ navigation }) => {
                 style={styles.companyImage}
               />
               <View style={styles.jobInfo}>
-                <Text style={styles.companyName}>{currentJob.companyName}</Text>
-                <Text style={styles.orderId}>Order ID: {currentJob.orderId}</Text>
-                <Text style={styles.jobType}>{currentJob.type}</Text>
+                <Text style={[styles.companyName, { color: theme.text }]}>
+                  {currentJob.companyName || currentJob.customer_name || 'Unknown Company'}
+                </Text>
+                <Text style={[styles.orderId, { color: theme.primary }]}>
+                  Order ID: {currentJob.orderId || currentJob.tracking_id || currentJob.order_id || 'N/A'}
+                </Text>
+                <Text style={[styles.jobType, { color: theme.primary }]}>
+                  {currentJob.type || 'LTL'}
+                </Text>
               </View>
             </View>
 
             {/* Job Details Section */}
-            <View style={styles.jobDetails}>
-              <Text style={styles.dateTime}>{currentJob.dateTime}</Text>
+            <View style={[styles.jobDetails, { borderTopColor: theme.border }]}>
+              <Text style={[styles.dateTime, { color: theme.textSecondary }]}>
+                {currentJob.dateTime || currentJob.shipment_date || currentJob.created_at || 'Date not available'}
+              </Text>
               
               {/* Pickup and Dropoff Locations */}
               <View style={styles.locationContainer}>
                 {/* Pickup Location */}
                 <View style={styles.locationItem}>
-                  <Ionicons name="location" size={20} color={colors.danger} />
-                  <Text style={styles.locationText}>{currentJob.pickupLocation}</Text>
+                  <Ionicons name="location" size={20} color={theme.error} />
+                  <Text style={[styles.locationText, { color: theme.text }]}>
+                    {currentJob.pickupLocation || 
+                     currentJob.from_address_text || 
+                     currentJob.from_address || 
+                     currentJob.pickup_address ||
+                     'Pickup address not available'}
+                  </Text>
                 </View>
                 {/* Dropoff Location */}
                 <View style={styles.locationItem}>
-                  <Ionicons name="navigate" size={20} color={colors.success} />
-                  <Text style={styles.locationText}>{currentJob.dropoffLocation}</Text>
+                  <Ionicons name="navigate" size={20} color={theme.success} />
+                  <Text style={[styles.locationText, { color: theme.text }]}>
+                    {currentJob.dropoffLocation || 
+                     currentJob.to_address_text || 
+                     currentJob.to_address || 
+                     currentJob.dropoff_address ||
+                     'Dropoff address not available'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -420,18 +500,18 @@ const CurrentJobScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={[
                   styles.actionButton, 
-                  styles.startButton,
+                  { backgroundColor: theme.success },
                   actionLoading && styles.disabledButton
                 ]}
                 onPress={() => handleJobAction('start')}
                 disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <Ionicons name="hourglass" size={20} color={colors.white} />
+                  <Ionicons name="hourglass" size={20} color={theme.textLight || '#FFFFFF'} />
                 ) : (
-                  <Ionicons name="play" size={20} color={colors.white} />
+                  <Ionicons name="play" size={20} color={theme.textLight || '#FFFFFF'} />
                 )}
-                <Text style={styles.actionButtonText}>
+                <Text style={[styles.actionButtonText, { color: theme.textLight || '#FFFFFF' }]}>
                   {actionLoading ? 'Starting...' : 'Start Job'}
                 </Text>
               </TouchableOpacity>
@@ -442,18 +522,18 @@ const CurrentJobScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={[
                   styles.actionButton, 
-                  styles.completeButton,
+                  { backgroundColor: theme.primary },
                   actionLoading && styles.disabledButton
                 ]}
                 onPress={() => handleJobAction('complete')}
                 disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <Ionicons name="hourglass" size={20} color={colors.white} />
+                  <Ionicons name="hourglass" size={20} color={theme.textLight || '#FFFFFF'} />
                 ) : (
-                  <Ionicons name="checkmark" size={20} color={colors.white} />
+                  <Ionicons name="checkmark" size={20} color={theme.textLight || '#FFFFFF'} />
                 )}
-                <Text style={styles.actionButtonText}>
+                <Text style={[styles.actionButtonText, { color: theme.textLight || '#FFFFFF' }]}>
                   {actionLoading ? 'Completing...' : 'Complete Job'}
                 </Text>
               </TouchableOpacity>
@@ -461,12 +541,19 @@ const CurrentJobScreen = ({ navigation }) => {
 
             {/* View Details Button - always available */}
             <TouchableOpacity
-              style={[styles.actionButton, styles.detailsButton]}
+              style={[
+                styles.actionButton, 
+                { 
+                  backgroundColor: theme.surface,
+                  borderWidth: 1,
+                  borderColor: theme.primary
+                }
+              ]}
               onPress={handleViewDetails}
               disabled={actionLoading}
             >
-              <Ionicons name="map" size={20} color={colors.themeColor} />
-              <Text style={[styles.actionButtonText, styles.detailsButtonText]}>
+              <Ionicons name="map" size={20} color={theme.primary} />
+              <Text style={[styles.actionButtonText, { color: theme.primary }]}>
                 View Details
               </Text>
             </TouchableOpacity>
@@ -504,224 +591,209 @@ const styles = StyleSheet.create({
   
   // Main content container
   container: {
-    paddingTop: 16,                             // Top spacing from header
+    paddingTop: spacing.md,
   },
 
   // Loading state container
   loadingContainer: {
-    flex: 1,                                    // Fill available space
-    justifyContent: 'center',                   // Center content vertically
-    alignItems: 'center',                       // Center content horizontally
-    paddingHorizontal: 32,                      // Side padding
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
   // Loading text styling
   loadingText: {
-    fontSize: 16,                               // Readable text size
-    color: colors.contentColor,                 // Subdued text color
-    marginTop: 12,                              // Space after icon
-    textAlign: 'center',                        // Center align text
+    fontSize: responsive(16, 18, 14),
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+
+  // Error container
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+
+  // Error text styling
+  errorText: {
+    fontSize: responsive(16, 18, 14),
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+
+  // Retry button
+  retryButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: componentSizes.buttonBorderRadius,
+    minHeight: componentSizes.buttonHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Retry button text
+  retryButtonText: {
+    fontSize: responsive(16, 18, 14),
+    fontWeight: '600',
   },
   
   // Empty state styling
   emptyContainer: {
-    flex: 1,                                    // Fill available space
-    justifyContent: 'center',                   // Center content vertically
-    alignItems: 'center',                       // Center content horizontally
-    paddingHorizontal: 32,                      // Side padding for text
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
   },
   
   // Empty state title
   emptyTitle: {
-    fontSize: 24,                               // Large heading size
-    fontWeight: 'bold',                         // Bold emphasis
-    color: colors.titleColor,                   // Primary text color
-    marginTop: 16,                              // Space after icon
-    marginBottom: 8,                            // Space before message
+    fontSize: responsive(24, 28, 20),
+    fontWeight: 'bold',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   
   // Empty state message
   emptyMessage: {
-    fontSize: 16,                               // Readable body text
-    color: colors.contentColor,                 // Subdued text color (original content-color)
-    textAlign: 'center',                        // Center align text
-    lineHeight: 24,                             // Improved readability
+    fontSize: responsive(16, 18, 14),
+    textAlign: 'center',
+    lineHeight: 24,
   },
   
   // Status container styling
   statusContainer: {
-    alignItems: 'center',                       // Center status elements
-    marginBottom: 24,                           // Space before job card
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   
   // Status title styling
   statusTitle: {
-    fontSize: 18,                               // Section heading size
-    fontWeight: '600',                          // Semi-bold weight
-    color: colors.titleColor,                   // Primary text color
-    marginBottom: 12,                           // Space before badge
+    fontSize: responsive(18, 20, 16),
+    fontWeight: '600',
+    marginBottom: spacing.md,
   },
   
   // Status badge container
   statusBadge: {
-    paddingHorizontal: 16,                      // Horizontal badge padding
-    paddingVertical: 8,                         // Vertical badge padding
-    borderRadius: 20,                           // Pill-shaped badge
-  },
-  
-  // Status-specific badge colors
-  acceptedStatus: {
-    backgroundColor: colors.secondaryColor,     // Orange for accepted jobs (original secondary color)
-  },
-  pickedupStatus: {
-    backgroundColor: colors.accentColor,        // Blue for picked up jobs (original accent color)
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
   },
   
   // Status badge text
   statusText: {
-    color: colors.white,                        // White text on colored background
-    fontWeight: '600',                          // Semi-bold emphasis
-    fontSize: 14,                               // Badge text size
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: responsive(14, 16, 12),
   },
   
   // Job information card
   jobCard: {
-    backgroundColor: colors.white,              // White card background
-    borderRadius: 12,                           // Rounded card corners
-    padding: 16,                                // Internal card padding
-    marginBottom: 24,                           // Space before actions
-    shadowColor: colors.black,                  // Shadow for card depth
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,                         // Subtle shadow
-    shadowRadius: 4,
-    elevation: 3,                               // Android shadow
+    borderRadius: componentSizes.cardBorderRadius,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    ...componentSizes.cardShadow,
+    elevation: componentSizes.cardElevation,
   },
   
   // Job header with company info
   jobHeader: {
-    flexDirection: 'row',                       // Horizontal layout
-    alignItems: 'center',                       // Center vertically
-    marginBottom: 16,                           // Space before details
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   
   // Company profile image
   companyImage: {
-    width: 60,                                  // Square image size
-    height: 60,
-    borderRadius: 30,                           // Circular image
-    marginRight: 12,                            // Space before text
+    width: responsive(60, 70, 50),
+    height: responsive(60, 70, 50),
+    borderRadius: responsive(30, 35, 25),
+    marginRight: spacing.md,
   },
   
   // Job info container
   jobInfo: {
-    flex: 1,                                    // Fill remaining space
+    flex: 1,
   },
   
   // Company name styling
   companyName: {
-    fontSize: 18,                               // Prominent heading
-    fontWeight: '600',                          // Semi-bold weight
-    color: colors.titleColor,                   // Primary text color
-    marginBottom: 4,                            // Small space after
+    fontSize: responsive(18, 20, 16),
+    fontWeight: '600',
+    marginBottom: spacing.xs,
   },
   
   // Order ID styling
   orderId: {
-    fontSize: 14,                               // Smaller reference text
-    color: colors.themeColor,                   // Theme color for emphasis (original theme-color)
-    marginBottom: 4,                            // Small space after
+    fontSize: responsive(14, 16, 12),
+    marginBottom: spacing.xs,
   },
   
   // Job type styling
   jobType: {
-    fontSize: 16,                               // Medium text size
-    fontWeight: 'bold',                         // Bold emphasis
-    color: colors.themeColor,                   // Theme color highlight (original theme-color)
+    fontSize: responsive(16, 18, 14),
+    fontWeight: 'bold',
   },
   
   // Job details section
   jobDetails: {
-    borderTopWidth: 1,                          // Top border separator
-    borderTopColor: colors.border,              // Light border color
-    paddingTop: 16,                             // Space after border
+    borderTopWidth: 1,
+    paddingTop: spacing.md,
   },
   
   // Date and time display
   dateTime: {
-    fontSize: 14,                               // Small reference text
-    color: colors.contentColor,                 // Subdued text color (original content-color)
-    marginBottom: 16,                           // Space before locations
+    fontSize: responsive(14, 16, 12),
+    marginBottom: spacing.md,
   },
   
   // Location container
   locationContainer: {
-    gap: 12,                                    // Consistent spacing between locations
+    gap: spacing.md,
   },
   
   // Individual location item
   locationItem: {
-    flexDirection: 'row',                       // Horizontal layout
-    alignItems: 'center',                       // Center icon and text
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   
   // Location text styling
   locationText: {
-    fontSize: 14,                               // Readable text size
-    color: colors.titleColor,                   // Primary text color
-    marginLeft: 8,                              // Space after icon
-    flex: 1,                                    // Fill available space
+    fontSize: responsive(14, 16, 12),
+    marginLeft: spacing.sm,
+    flex: 1,
   },
   
   // Action buttons container
   actionsContainer: {
-    gap: 12,                                    // Consistent button spacing
+    gap: spacing.md,
   },
   
   // Base action button styling
   actionButton: {
-    flexDirection: 'row',                       // Horizontal layout for icon and text
-    alignItems: 'center',                       // Center content
-    justifyContent: 'center',                   // Center horizontally
-    paddingVertical: 16,                        // Comfortable touch target
-    borderRadius: 8,                            // Rounded button corners
-    gap: 8,                                     // Space between icon and text
-  },
-  
-  // Start job button
-  startButton: {
-    backgroundColor: colors.successColor,       // Green for start action (original success-color)
-  },
-  
-  // Complete job button
-  completeButton: {
-    backgroundColor: colors.themeColor,         // Theme color for complete
-  },
-  
-  // Details button (outline style)
-  detailsButton: {
-    backgroundColor: colors.white,              // White background
-    borderWidth: 1,                             // Outline border
-    borderColor: colors.themeColor,             // Theme color border
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: componentSizes.buttonBorderRadius,
+    gap: spacing.sm,
+    minHeight: componentSizes.buttonHeight,
   },
 
   // Disabled button state
   disabledButton: {
-    opacity: 0.6,                               // Reduced opacity for disabled state
+    opacity: 0.6,
   },
   
   // Action button text
   actionButtonText: {
-    fontSize: 16,                               // Readable button text
-    fontWeight: '600',                          // Semi-bold emphasis
-    color: colors.white,                        // White text (overridden for outline)
-  },
-  
-  // Details button specific text color
-  detailsButtonText: {
-    color: colors.themeColor,                   // Theme color for outline button
+    fontSize: responsive(16, 18, 14),
+    fontWeight: '600',
   },
 });
 

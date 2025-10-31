@@ -36,9 +36,10 @@
  * @version 1.0.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../context/AppContext';
@@ -56,7 +57,7 @@ import { colors, commonStyles } from '../styles/commonStyles';
  */
 const ProfileSettingScreen = ({ navigation }) => {
   // Get user data and update function from global context
-  const { user, updateUserProfile, isLoading, getError, clearError } = useApp();
+  const { user, updateUserProfile, loadDriverProfile, isLoading, getError, clearError } = useApp();
   
   /**
    * Form State Management
@@ -75,6 +76,46 @@ const ProfileSettingScreen = ({ navigation }) => {
 
   // Local loading state for form submission
   const [isUpdating, setIsUpdating] = useState(false);
+
+  /**
+   * Reload Profile Data When Screen is First Focused
+   * 
+   * Loads profile data once when the screen is first focused.
+   * Prevents continuous reloading and excessive API calls.
+   */
+  const [hasLoadedOnFocus, setHasLoadedOnFocus] = useState(false);
+  
+  useFocusEffect(
+    React.useCallback(() => {
+      // Only reload profile data once when screen is first focused
+      // This prevents continuous API calls and logs
+      if (!hasLoadedOnFocus && !isLoading('profile')) {
+        setHasLoadedOnFocus(true);
+        loadDriverProfile().catch(err => {
+          console.error('Failed to reload profile:', err);
+          setHasLoadedOnFocus(false); // Reset on error so it can retry
+        });
+      }
+    }, [loadDriverProfile, hasLoadedOnFocus]) // Removed isLoading from deps
+  );
+
+  /**
+   * Update Form Data When User Data Changes
+   * 
+   * Syncs form fields with the latest user data from context.
+   */
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        profileImage: user.image || user.profileImage || '',
+      });
+    }
+  }, [user]);
 
   /**
    * Handle Input Change
@@ -179,10 +220,20 @@ const ProfileSettingScreen = ({ navigation }) => {
       const success = await updateUserProfile(updateData);
 
       if (success) {
+        // Show success message and reload profile data
         Alert.alert(
           'Success', 
-          'Profile updated successfully!', 
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          'Profile updated successfully', 
+          [
+            { 
+              text: 'OK', 
+              onPress: () => {
+                // Reset the focus flag so profile reloads next time screen is opened
+                setHasLoadedOnFocus(false);
+                navigation.goBack();
+              }
+            }
+          ]
         );
       } else {
         const error = getError('profileUpdate');
